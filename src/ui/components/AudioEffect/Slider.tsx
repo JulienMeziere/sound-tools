@@ -1,11 +1,10 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react'
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react'
 
 interface SliderProps {
   label: string
   value: number
   min: number
   max: number
-  step?: number
   onChange: (value: number) => void
 }
 
@@ -36,9 +35,11 @@ const SLIDER_TRACK_STYLE = {
 }
 
 const SLIDER_FILL_STYLE = {
-  height: '100%',
+  height: '20px',
   backgroundColor: '#4CAF50',
   borderRadius: '10px',
+  top: 1,
+  position: 'absolute' as const,
 }
 
 const SLIDER_THUMB_STYLE = {
@@ -52,24 +53,41 @@ const SLIDER_THUMB_STYLE = {
   boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
 }
 
+const SLIDER_FILL_CONTAINER_STYLE = {
+  position: 'relative' as const,
+}
+
+const INVISIBLE_TRACK_STYLE = {
+  position: 'absolute' as const,
+  top: '0',
+  left: '10px',
+  right: '10px',
+  height: '100%',
+  cursor: 'pointer',
+}
+
 const Slider: React.FC<SliderProps> = ({
   label,
   value,
   min,
   max,
-  step = 1,
   onChange,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null)
+  const invisibleTrackRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [containerWidth, setContainerWidth] = useState(0)
 
-  const percentage = ((value - min) / (max - min)) * 100
+  const percentage = useMemo(
+    () => ((value - min) / (max - min)) * 100,
+    [value, min, max]
+  )
 
   const updateValue = useCallback(
     (clientX: number) => {
-      if (!trackRef.current) return
+      if (!invisibleTrackRef.current) return
 
-      const rect = trackRef.current.getBoundingClientRect()
+      const rect = invisibleTrackRef.current.getBoundingClientRect()
       const clickX = clientX - rect.left
       const trackWidth = rect.width
       const newPercentage = Math.max(
@@ -78,13 +96,11 @@ const Slider: React.FC<SliderProps> = ({
       )
       const newValue = min + (newPercentage / 100) * (max - min)
 
-      // Round to step
-      const steppedValue = Math.round(newValue / step) * step
-      const clampedValue = Math.max(min, Math.min(max, steppedValue))
-
-      onChange(clampedValue)
+      const boundedValue = Math.max(min, Math.min(max, newValue))
+      console.log(boundedValue)
+      onChange(boundedValue)
     },
-    [min, max, step, onChange]
+    [min, max, onChange]
   )
 
   const handleTrackClick = useCallback(
@@ -130,36 +146,78 @@ const Slider: React.FC<SliderProps> = ({
     }
   }, [isDragging, updateValue])
 
-  // Calculate thumb position (centered on the track)
-  const thumbLeft = `calc(${percentage}% - 8px)`
+  // Memoize container width update function
+  const updateContainerWidth = useCallback(() => {
+    if (trackRef.current) {
+      setContainerWidth(trackRef.current.offsetWidth)
+    }
+  }, [])
+
+  // Get container width on mount and resize
+  useEffect(() => {
+    updateContainerWidth()
+    window.addEventListener('resize', updateContainerWidth)
+
+    return () => {
+      window.removeEventListener('resize', updateContainerWidth)
+    }
+  }, [updateContainerWidth])
+
+  // Memoize thumb position calculation
+  const thumbLeft = useMemo(() => `calc(${percentage}% - 8px)`, [percentage])
+
+  // Memoize track width calculation
+  const trackWidth = useMemo(() => {
+    if (containerWidth === 0) return '20px' // Fallback while measuring
+
+    const minWidth = 22 // 22px at 0%
+    const maxWidth = containerWidth // 100% width at 100%
+    const currentWidth = minWidth + (percentage / 100) * (maxWidth - minWidth)
+
+    return `${currentWidth}px`
+  }, [percentage, containerWidth])
+
+  // Memoize dynamic styles
+  const fillStyle = useMemo(
+    () => ({
+      ...SLIDER_FILL_STYLE,
+      width: trackWidth,
+    }),
+    [trackWidth]
+  )
+
+  const thumbStyle = useMemo(
+    () => ({
+      ...SLIDER_THUMB_STYLE,
+      left: thumbLeft,
+      cursor: isDragging ? 'grabbing' : 'grab',
+    }),
+    [thumbLeft, isDragging]
+  )
+
+  // Memoize formatted value
+  const formattedValue = useMemo(() => value.toFixed(0), [value])
 
   return (
     <div style={SLIDER_CONTAINER_STYLE}>
       <div style={SLIDER_LABEL_STYLE}>
         <span>{label}</span>
-        <span>{value.toFixed(step < 1 ? 1 : 0)}</span>
+        <span>{formattedValue}</span>
       </div>
-      <div
-        ref={trackRef}
-        style={SLIDER_TRACK_STYLE}
-        onClick={handleTrackClick}
-        onMouseDown={handleMouseDown}
-      >
-        <div
-          style={{
-            ...SLIDER_FILL_STYLE,
-            width: `${percentage}%`,
-          }}
-        />
-        <div
-          className='slider-thumb'
-          style={{
-            ...SLIDER_THUMB_STYLE,
-            left: thumbLeft,
-            cursor: isDragging ? 'grabbing' : 'grab',
-          }}
-          onMouseDown={handleMouseDown}
-        />
+      <div style={SLIDER_FILL_CONTAINER_STYLE}>
+        <div style={fillStyle} />
+        <div ref={trackRef} style={SLIDER_TRACK_STYLE}>
+          {/* Invisible track for interaction - smaller area with margins */}
+          <div
+            ref={invisibleTrackRef}
+            style={INVISIBLE_TRACK_STYLE}
+            onClick={handleTrackClick}
+            onMouseDown={handleMouseDown}
+          >
+            {/* Thumb is now inside the invisible track */}
+            <div className='slider-thumb' style={thumbStyle} />
+          </div>
+        </div>
       </div>
     </div>
   )

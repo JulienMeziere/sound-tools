@@ -28,6 +28,7 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
     }))
     // Effect parameter changes will be implemented later
   }, [])
+
   const effectRows = useMemo(
     () =>
       EFFECTS.map(effect => {
