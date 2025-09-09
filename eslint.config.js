@@ -95,11 +95,11 @@ export default [
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/require-await': 'error',
-      '@typescript-eslint/prefer-readonly': 'warn',
+      '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/strict-boolean-expressions': 'off',
 
       // General strict rules
-      'no-console': 'warn',
+      'no-console': 'error',
       'no-debugger': 'error',
       'no-alert': 'error',
       'no-eval': 'error',
