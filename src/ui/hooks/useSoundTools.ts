@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-import { Logger } from '../logger'
+import { Logger } from '../../logger'
 
 interface UseSoundToolsReturn {
   isConnected: boolean

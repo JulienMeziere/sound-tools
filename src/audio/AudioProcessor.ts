@@ -14,8 +14,8 @@ export class AudioProcessor {
   private readonly enabledEffects: Set<string> = new Set()
   private readonly availableEffects: Map<string, AudioEffect> = new Map()
 
-  // Effect processing order
-  private static readonly EFFECT_ORDER = ['filter', 'distortion', 'reverb']
+  // Effect processing order: Distortion > Reverb > Filter
+  private static readonly EFFECT_ORDER = ['distortion', 'reverb', 'filter']
 
   constructor() {
     this.initializeEffects()

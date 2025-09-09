@@ -2,7 +2,7 @@ import React from 'react'
 
 import { useSoundTools } from '../hooks/useSoundTools'
 
-import AudioEffects from './AudioEffects'
+import AudioEffects from './AudioEffect'
 import Header from './Header'
 import MidiController from './MidiController'
 

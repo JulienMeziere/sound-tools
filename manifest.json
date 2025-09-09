@@ -11,7 +11,7 @@
     "<all_urls>"
   ],
   "action": {
-    "default_popup": "src/popup/popup.html",
+    "default_popup": "src/ui/popup/popup.html",
     "default_title": "Sound Tools"
   },
   "content_scripts": [
@@ -20,10 +20,6 @@
       "js": ["src/content/content.ts"]
     }
   ],
-  "background": {
-    "service_worker": "src/background/background.ts",
-    "type": "module"
-  },
   "web_accessible_resources": [
     {
       "resources": [

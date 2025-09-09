@@ -19,6 +19,7 @@ const BASE_BUTTON_STYLE = {
   boxSizing: 'border-box' as const,
   borderWidth: '2px',
   borderStyle: 'solid',
+  flex: 1,
 } as const
 
 const STATUS_STYLE = { fontSize: '12px', opacity: 0.8 } as const
