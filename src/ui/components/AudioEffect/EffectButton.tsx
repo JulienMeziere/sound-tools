@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react';
 
 interface EffectButtonProps {
-  effect: string
-  isEnabled: boolean
-  onToggle: (effect: string) => void
+  effect: string;
+  isEnabled: boolean;
+  onToggle: (effect: string) => void;
 }
 
 // Constants moved outside component
@@ -20,15 +20,15 @@ const BASE_BUTTON_STYLE = {
   borderWidth: '2px',
   borderStyle: 'solid',
   flex: 1,
-} as const
+} as const;
 
-const STATUS_STYLE = { fontSize: '12px', opacity: 0.8 } as const
+const STATUS_STYLE = { fontSize: '12px', opacity: 0.8 } as const;
 
-const ENABLED_BG = 'rgba(76, 175, 80, 0.8)'
-const DISABLED_BG = 'rgba(255, 255, 255, 0.2)'
-const HOVER_BG = 'rgba(255, 255, 255, 0.3)'
-const ENABLED_BORDER_COLOR = '#4CAF50'
-const DISABLED_BORDER_COLOR = 'rgba(255, 255, 255, 0.3)'
+const ENABLED_BG = 'rgba(76, 175, 80, 0.8)';
+const DISABLED_BG = 'rgba(255, 255, 255, 0.2)';
+const HOVER_BG = 'rgba(255, 255, 255, 0.3)';
+const ENABLED_BORDER_COLOR = '#4CAF50';
+const DISABLED_BORDER_COLOR = 'rgba(255, 255, 255, 0.3)';
 
 const EffectButton: React.FC<EffectButtonProps> = ({
   effect,
@@ -36,26 +36,26 @@ const EffectButton: React.FC<EffectButtonProps> = ({
   onToggle,
 }) => {
   const handleClick = useCallback(() => {
-    onToggle(effect)
-  }, [effect, onToggle])
+    onToggle(effect);
+  }, [effect, onToggle]);
 
   const handleMouseOver = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       if (!isEnabled) {
-        e.currentTarget.style.backgroundColor = HOVER_BG
+        e.currentTarget.style.backgroundColor = HOVER_BG;
       }
     },
     [isEnabled]
-  )
+  );
 
   const handleMouseOut = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       if (!isEnabled) {
-        e.currentTarget.style.backgroundColor = DISABLED_BG
+        e.currentTarget.style.backgroundColor = DISABLED_BG;
       }
     },
     [isEnabled]
-  )
+  );
 
   const buttonStyle = useMemo(
     () => ({
@@ -65,7 +65,7 @@ const EffectButton: React.FC<EffectButtonProps> = ({
       fontWeight: isEnabled ? '600' : 'normal',
     }),
     [isEnabled]
-  )
+  );
 
   return (
     <button
@@ -77,7 +77,7 @@ const EffectButton: React.FC<EffectButtonProps> = ({
       <span>{effect}</span>
       <span style={STATUS_STYLE}>{isEnabled ? 'ON' : 'OFF'}</span>
     </button>
-  )
-}
+  );
+};
 
-export default EffectButton
+export default EffectButton;

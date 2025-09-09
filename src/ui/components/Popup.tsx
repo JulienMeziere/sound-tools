@@ -1,13 +1,13 @@
-import React from 'react'
+import React from 'react';
 
-import { useSoundTools } from '../hooks/useSoundTools'
+import { useSoundTools } from '../hooks/useSoundTools';
 
-import AudioEffects from './AudioEffect'
-import Header from './Header'
-import MidiController from './MidiController'
+import AudioEffects from './AudioEffect';
+import Header from './Header';
+import MidiController from './MidiController';
 
 // Constants moved outside component
-const CONTAINER_STYLE = { padding: '20px' } as const
+const CONTAINER_STYLE = { padding: '20px' } as const;
 
 const Popup: React.FC = () => {
   const {
@@ -17,7 +17,7 @@ const Popup: React.FC = () => {
     connectMidi,
     toggleEffect,
     updateEffectParameter,
-  } = useSoundTools()
+  } = useSoundTools();
 
   return (
     <div style={CONTAINER_STYLE}>
@@ -33,7 +33,7 @@ const Popup: React.FC = () => {
         onUpdateEffectParameter={updateEffectParameter}
       />
     </div>
-  )
-}
+  );
+};
 
-export default Popup
+export default Popup;

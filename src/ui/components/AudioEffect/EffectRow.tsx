@@ -1,15 +1,23 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState } from 'react';
 
-import EffectButton from './EffectButton'
-import SettingsButton from './SettingsButton'
-import Slider from './Slider'
+import EffectButton from './EffectButton';
+import SettingsButton from './SettingsButton';
+import Slider from './Slider';
+
+interface EffectParameter {
+  name: string;
+  label: string;
+  value: number;
+  min?: number;
+  max?: number;
+}
 
 interface EffectRowProps {
-  effect: string
-  isEnabled: boolean
-  onToggle: (effect: string) => void
-  sliderValue: number
-  onSliderChange: (effect: string, value: number) => void
+  effect: string;
+  isEnabled: boolean;
+  onToggle: (effect: string) => void;
+  parameters: EffectParameter[];
+  onParameterChange: (effect: string, parameter: string, value: number) => void;
 }
 
 // Constants moved outside component
@@ -18,32 +26,31 @@ const ROW_STYLE = {
   gap: '8px',
   alignItems: 'center',
   width: '100%',
-} as const
+} as const;
 
 const SLIDER_CONTAINER_STYLE = {
   marginTop: '8px',
-} as const
+} as const;
 
 const EffectRow: React.FC<EffectRowProps> = ({
   effect,
   isEnabled,
   onToggle,
-  sliderValue,
-  onSliderChange,
+  parameters,
+  onParameterChange,
 }) => {
-  const [isSliderOpen, setIsSliderOpen] = useState(false)
-  const effectLower = effect.toLowerCase()
+  const [isSliderOpen, setIsSliderOpen] = useState(false);
 
   const toggleSlider = useCallback(() => {
-    setIsSliderOpen(prev => !prev)
-  }, [])
+    setIsSliderOpen(prev => !prev);
+  }, []);
 
-  const handleSliderChange = useCallback(
-    (value: number) => {
-      onSliderChange(effectLower, value)
+  const handleParameterChange = useCallback(
+    (parameterName: string, value: number) => {
+      onParameterChange(effect.toLowerCase(), parameterName, value);
     },
-    [effectLower, onSliderChange]
-  )
+    [effect, onParameterChange]
+  );
 
   return (
     <div>
@@ -57,17 +64,20 @@ const EffectRow: React.FC<EffectRowProps> = ({
       </div>
       {isSliderOpen && (
         <div style={SLIDER_CONTAINER_STYLE}>
-          <Slider
-            label={`${effect} Level`}
-            value={sliderValue}
-            min={0}
-            max={100}
-            onChange={handleSliderChange}
-          />
+          {parameters.map(param => (
+            <Slider
+              key={param.name}
+              label={param.label}
+              value={param.value}
+              min={param.min || 0}
+              max={param.max || 100}
+              onChange={value => handleParameterChange(param.name, value)}
+            />
+          ))}
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default EffectRow
+export default EffectRow;

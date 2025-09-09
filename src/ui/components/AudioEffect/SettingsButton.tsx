@@ -1,8 +1,8 @@
-import React from 'react'
+import React from 'react';
 
 interface SettingsButtonProps {
-  isActive: boolean
-  onClick: () => void
+  isActive: boolean;
+  onClick: () => void;
 }
 
 // Constants moved outside component
@@ -21,7 +21,7 @@ const SETTINGS_BUTTON_STYLE = {
   fontSize: '14px',
   transition: 'all 0.2s',
   outline: 'none',
-} as const
+} as const;
 
 const SETTINGS_BUTTON_ACTIVE_STYLE = {
   ...SETTINGS_BUTTON_STYLE,
@@ -29,7 +29,7 @@ const SETTINGS_BUTTON_ACTIVE_STYLE = {
   borderColor: '#4CAF50',
   outline: 'none',
   boxShadow: '0 0 8px rgba(76, 175, 80, 0.4)',
-} as const
+} as const;
 
 const SettingsButton: React.FC<SettingsButtonProps> = ({
   isActive,
@@ -39,18 +39,18 @@ const SettingsButton: React.FC<SettingsButtonProps> = ({
     style={isActive ? SETTINGS_BUTTON_ACTIVE_STYLE : SETTINGS_BUTTON_STYLE}
     onMouseOver={e => {
       if (!isActive) {
-        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
+        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
       }
     }}
     onMouseOut={e => {
       if (!isActive) {
-        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
       }
     }}
     onClick={onClick}
   >
     ⚙️
   </button>
-)
+);
 
-export default SettingsButton
+export default SettingsButton;

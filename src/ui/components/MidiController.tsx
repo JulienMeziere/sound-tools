@@ -1,23 +1,23 @@
-import React, { useMemo } from 'react'
+import React, { useMemo } from 'react';
 
 interface MidiControllerProps {
-  isConnected: boolean
-  midiDevices: string[]
-  onConnectMidi: () => void
+  isConnected: boolean;
+  midiDevices: string[];
+  onConnectMidi: () => void;
 }
 
 // Constants moved outside component
-const CONTAINER_STYLE = { marginBottom: '20px' } as const
+const CONTAINER_STYLE = { marginBottom: '20px' } as const;
 const STATUS_CONTAINER_STYLE = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
-} as const
+} as const;
 const INDICATOR_BASE_STYLE = {
   width: '10px',
   height: '10px',
   borderRadius: '50%',
-} as const
+} as const;
 const BUTTON_STYLE = {
   marginTop: '10px',
   padding: '8px 16px',
@@ -26,11 +26,11 @@ const BUTTON_STYLE = {
   border: 'none',
   borderRadius: '4px',
   cursor: 'pointer',
-} as const
-const DEVICES_STYLE = { marginTop: '10px' } as const
+} as const;
+const DEVICES_STYLE = { marginTop: '10px' } as const;
 
-const CONNECTED_COLOR = '#4CAF50'
-const DISCONNECTED_COLOR = '#f44336'
+const CONNECTED_COLOR = '#4CAF50';
+const DISCONNECTED_COLOR = '#f44336';
 
 const MidiController: React.FC<MidiControllerProps> = ({
   isConnected,
@@ -43,18 +43,18 @@ const MidiController: React.FC<MidiControllerProps> = ({
       backgroundColor: isConnected ? CONNECTED_COLOR : DISCONNECTED_COLOR,
     }),
     [isConnected]
-  )
+  );
 
   const statusText = useMemo(
     () => (isConnected ? 'Connected' : 'Disconnected'),
     [isConnected]
-  )
+  );
 
   const devicesText = useMemo(
     () =>
       midiDevices.length > 0 ? `Devices: ${midiDevices.join(', ')}` : null,
     [midiDevices]
-  )
+  );
 
   return (
     <div style={CONTAINER_STYLE}>
@@ -76,7 +76,7 @@ const MidiController: React.FC<MidiControllerProps> = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default MidiController
+export default MidiController;

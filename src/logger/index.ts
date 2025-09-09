@@ -10,7 +10,7 @@ export class Logger {
     if (typeof import.meta !== 'undefined' && import.meta.env) {
       return (
         import.meta.env.DEV === true || import.meta.env.MODE === 'development'
-      )
+      );
     }
 
     // Fallback to globalThis check
@@ -18,11 +18,11 @@ export class Logger {
       typeof globalThis !== 'undefined' &&
       (globalThis as Record<string, unknown>)['__DEV__'] !== undefined
     ) {
-      return Boolean((globalThis as Record<string, unknown>)['__DEV__'])
+      return Boolean((globalThis as Record<string, unknown>)['__DEV__']);
     }
 
     // Default to development for Chrome extensions
-    return true
+    return true;
   }
 
   private static output<T extends (..._data: unknown[]) => void>(
@@ -31,7 +31,7 @@ export class Logger {
     alwaysPrint = false
   ): void {
     if (this.isDev() || alwaysPrint) {
-      logCb(...params)
+      logCb(...params);
     }
   }
 
@@ -39,31 +39,31 @@ export class Logger {
     prefix: string,
     ...params: unknown[]
   ): unknown[] {
-    return [`🎵 Sound Tools [${prefix}]:`, ...params]
+    return [`🎵 Sound Tools [${prefix}]:`, ...params];
   }
 
   public static log(...params: Parameters<typeof console.log>): void {
     // eslint-disable-next-line no-console
-    this.output(console.log, this.formatMessage('LOG', ...params))
+    this.output(console.log, this.formatMessage('LOG', ...params));
   }
 
   public static info(...params: Parameters<typeof console.info>): void {
     // eslint-disable-next-line no-console
-    this.output(console.info, this.formatMessage('INFO', ...params))
+    this.output(console.info, this.formatMessage('INFO', ...params));
   }
 
   public static warn(...params: Parameters<typeof console.warn>): void {
     // eslint-disable-next-line no-console
-    this.output(console.warn, this.formatMessage('WARN', ...params), true)
+    this.output(console.warn, this.formatMessage('WARN', ...params), true);
   }
 
   public static error(...params: Parameters<typeof console.error>): void {
     // eslint-disable-next-line no-console
-    this.output(console.error, this.formatMessage('ERROR', ...params), true)
+    this.output(console.error, this.formatMessage('ERROR', ...params), true);
   }
 
   public static debug(...params: Parameters<typeof console.debug>): void {
     // eslint-disable-next-line no-console
-    this.output(console.debug, this.formatMessage('DEBUG', ...params), true)
+    this.output(console.debug, this.formatMessage('DEBUG', ...params), true);
   }
 }
