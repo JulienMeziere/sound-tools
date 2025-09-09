@@ -1,0 +1,11 @@
+# Run comprehensive checks before push
+echo "🔍 Running type check..."
+npm run type-check
+
+echo "🔍 Running full linting check..."
+npm run lint:check
+
+echo "🔍 Running format check..."
+npm run format:check
+
+echo "✅ All checks passed! Ready to push."

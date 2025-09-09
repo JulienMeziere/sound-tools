@@ -1,0 +1,68 @@
+{
+  "name": "sound-tools",
+  "version": "1.0.0",
+  "description": "A browser add providing audio FXs to the browser and that can connect to MIDI controllers",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run lint:check && npm run format:check && tsc && vite build --mode production",
+    "build:dev": "npm run lint:check && npm run format:check && tsc && vite build --mode development",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx --fix",
+    "lint:check": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check-all": "npm run type-check && npm run lint:check && npm run format:check",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JulienMeziere/sound-tools.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JulienMeziere/sound-tools/issues"
+  },
+  "homepage": "https://github.com/JulienMeziere/sound-tools#readme",
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.2.0",
+    "@eslint/js": "^9.35.0",
+    "@types/chrome": "^0.1.9",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@typescript-eslint/eslint-plugin": "^8.43.0",
+    "@typescript-eslint/parser": "^8.43.0",
+    "@vitejs/plugin-react": "^5.0.2",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{js,jsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,css,html}": [
+      "prettier --write"
+    ]
+  }
+}
