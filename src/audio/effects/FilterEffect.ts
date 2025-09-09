@@ -18,4 +18,15 @@ export class FilterEffect extends BaseAudioEffect {
       return null
     }
   }
+
+  override updateParameter(
+    _node: AudioNode,
+    parameterName: string,
+    _value: number
+  ): void {
+    // TODO: Implement filter parameter updates (frequency, Q, type)
+    Logger.warn(
+      `FilterEffect: Parameter '${parameterName}' not yet implemented`
+    )
+  }
 }

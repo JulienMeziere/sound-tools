@@ -57,6 +57,15 @@ export class ContentScriptManager implements MidiControllerEvents {
           this.enableEffect(request.effect)
           sendResponse({ success: true })
           break
+
+        case 'updateEffectParameter':
+          this.audioProcessor.updateEffectParameter(
+            request.effect,
+            request.parameter,
+            request.value
+          )
+          sendResponse({ success: true })
+          break
       }
       return true
     })

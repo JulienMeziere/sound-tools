@@ -8,6 +8,11 @@ interface UseSoundToolsReturn {
   enabledEffects: Set<string>
   connectMidi: () => void
   toggleEffect: (effect: string) => void
+  updateEffectParameter: (
+    effect: string,
+    parameter: string,
+    value: number
+  ) => void
 }
 
 // Constants moved outside component
@@ -17,6 +22,7 @@ const EFFECT_STATUS_ACTION = 'getEffectStatus'
 const CONNECT_MIDI_ACTION = 'connectMidi'
 const ENABLE_EFFECT_ACTION = 'enableEffect'
 const DISABLE_EFFECT_ACTION = 'disableEffect'
+const UPDATE_EFFECT_PARAMETER_ACTION = 'updateEffectParameter'
 
 // Helper function to send tab messages
 const sendTabMessage = (
@@ -165,11 +171,28 @@ export const useSoundTools = (): UseSoundToolsReturn => {
     [enabledEffects]
   )
 
+  const updateEffectParameter = useCallback(
+    (effect: string, parameter: string, value: number): void => {
+      getActiveTab(tabId => {
+        if (typeof tabId === 'number') {
+          sendTabMessage(tabId, {
+            action: UPDATE_EFFECT_PARAMETER_ACTION,
+            effect: effect.toLowerCase(),
+            parameter,
+            value,
+          })
+        }
+      })
+    },
+    []
+  )
+
   return {
     isConnected,
     midiDevices,
     enabledEffects,
     connectMidi,
     toggleEffect,
+    updateEffectParameter,
   }
 }

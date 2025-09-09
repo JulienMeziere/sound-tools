@@ -16,6 +16,7 @@ const Popup: React.FC = () => {
     enabledEffects,
     connectMidi,
     toggleEffect,
+    updateEffectParameter,
   } = useSoundTools()
 
   return (
@@ -29,6 +30,7 @@ const Popup: React.FC = () => {
       <AudioEffects
         enabledEffects={enabledEffects}
         onToggleEffect={toggleEffect}
+        onUpdateEffectParameter={updateEffectParameter}
       />
     </div>
   )

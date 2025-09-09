@@ -55,6 +55,22 @@ export class AudioProcessor {
     }
   }
 
+  updateEffectParameter(
+    effectName: string,
+    parameterName: string,
+    value: number
+  ): void {
+    const effectNode = this.effectNodes.get(effectName)
+    const effect = this.availableEffects.get(effectName)
+
+    if (!effectNode || !effect) {
+      Logger.error(`Effect '${effectName}' not found or not enabled`)
+      return
+    }
+
+    effect.updateParameter(effectNode, parameterName, value)
+  }
+
   private setupAudioProcessing(): void {
     if (!this.audioContext) {
       this.audioContext = new AudioContext()
