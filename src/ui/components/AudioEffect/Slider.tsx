@@ -97,7 +97,6 @@ const Slider: React.FC<SliderProps> = ({
       const newValue = min + (newPercentage / 100) * (max - min)
 
       const boundedValue = Math.max(min, Math.min(max, newValue))
-      console.log(boundedValue)
       onChange(boundedValue)
     },
     [min, max, onChange]
