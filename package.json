@@ -15,7 +15,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check-all": "npm run type-check && npm run lint:check && npm run format:check",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prepare-publish": "npm run check-all && npm run build && npm run package",
+    "package": "cd dist && zip -r ../sound-tools-extension.zip * && cd .. && echo 'Extension packaged as sound-tools-extension.zip'"
   },
   "repository": {
     "type": "git",
