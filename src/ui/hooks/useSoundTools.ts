@@ -1,12 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { Logger } from '../../logger';
 
 interface UseSoundToolsReturn {
-  isConnected: boolean;
-  midiDevices: string[];
   enabledEffects: Set<string>;
-  connectMidi: () => void;
   toggleEffect: (effect: string) => void;
   updateEffectParameter: (
     effect: string,
@@ -17,9 +14,7 @@ interface UseSoundToolsReturn {
 
 // Constants moved outside component
 const RETRY_DELAY = 1000;
-const MIDI_STATUS_ACTION = 'getMidiStatus';
 const EFFECT_STATUS_ACTION = 'getEffectStatus';
-const CONNECT_MIDI_ACTION = 'connectMidi';
 const ENABLE_EFFECT_ACTION = 'enableEffect';
 const DISABLE_EFFECT_ACTION = 'disableEffect';
 const UPDATE_EFFECT_PARAMETER_ACTION = 'updateEffectParameter';
@@ -45,36 +40,10 @@ const getActiveTab = (callback: (tabId: number | undefined) => void): void => {
 };
 
 export const useSoundTools = (): UseSoundToolsReturn => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [midiDevices, setMidiDevices] = useState<string[]>([]);
   const [enabledEffects, setEnabledEffects] = useState<Set<string>>(new Set());
 
   // Use ref for cleanup timer to avoid stale closures
   const retryTimerRef = useRef<number | null>(null);
-
-  const getMidiStatus = useCallback((tabId: number): void => {
-    sendTabMessage(tabId, { action: MIDI_STATUS_ACTION }, response => {
-      if (chrome.runtime.lastError) {
-        Logger.warn(
-          'Content script not ready:',
-          chrome.runtime.lastError.message
-        );
-        return;
-      }
-      if (response && typeof response === 'object' && response !== null) {
-        const resp = response as {
-          isConnected?: boolean;
-          devices?: string[];
-        };
-        if (typeof resp.isConnected === 'boolean') {
-          setIsConnected(resp.isConnected);
-        }
-        if (Array.isArray(resp.devices)) {
-          setMidiDevices(resp.devices);
-        }
-      }
-    });
-  }, []);
 
   const getEffectStatus = useCallback((tabId: number): void => {
     sendTabMessage(tabId, { action: EFFECT_STATUS_ACTION }, response => {
@@ -102,11 +71,10 @@ export const useSoundTools = (): UseSoundToolsReturn => {
   const initializePopup = useCallback((): void => {
     getActiveTab(tabId => {
       if (typeof tabId === 'number') {
-        getMidiStatus(tabId);
         getEffectStatus(tabId);
       }
     });
-  }, [getMidiStatus, getEffectStatus]);
+  }, [getEffectStatus]);
 
   useEffect(() => {
     // Try immediately, then retry after a short delay if needed
@@ -120,14 +88,6 @@ export const useSoundTools = (): UseSoundToolsReturn => {
       }
     };
   }, [initializePopup]);
-
-  const connectMidi = useCallback((): void => {
-    getActiveTab(tabId => {
-      if (typeof tabId === 'number') {
-        sendTabMessage(tabId, { action: CONNECT_MIDI_ACTION });
-      }
-    });
-  }, []);
 
   const toggleEffect = useCallback(
     (effect: string): void => {
@@ -187,12 +147,12 @@ export const useSoundTools = (): UseSoundToolsReturn => {
     []
   );
 
-  return {
-    isConnected,
-    midiDevices,
-    enabledEffects,
-    connectMidi,
-    toggleEffect,
-    updateEffectParameter,
-  };
+  return useMemo(
+    () => ({
+      enabledEffects,
+      toggleEffect,
+      updateEffectParameter,
+    }),
+    [enabledEffects, toggleEffect, updateEffectParameter]
+  );
 };

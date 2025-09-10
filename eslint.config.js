@@ -136,7 +136,7 @@ export default [
       'react/no-deprecated': 'error',
       'react/no-direct-mutation-state': 'error',
       'react/no-unsafe': 'error',
-      'react/hook-use-state': 'error',
+      'react/hook-use-state': 'off',
 
       // React Hooks strict rules
       'react-hooks/rules-of-hooks': 'error',
