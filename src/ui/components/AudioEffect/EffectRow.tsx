@@ -42,7 +42,7 @@ const EffectRow: React.FC<EffectRowProps> = ({
   const [isSliderOpen, setIsSliderOpen] = useState(false);
 
   const toggleSlider = useCallback(() => {
-    setIsSliderOpen(prev => !prev);
+    setIsSliderOpen((prev) => !prev);
   }, []);
 
   const handleParameterChange = useCallback(
@@ -64,14 +64,14 @@ const EffectRow: React.FC<EffectRowProps> = ({
       </div>
       {isSliderOpen && (
         <div style={SLIDER_CONTAINER_STYLE}>
-          {parameters.map(param => (
+          {parameters.map((param) => (
             <Slider
               key={param.name}
               label={param.label}
               value={param.value}
               min={param.min || 0}
               max={param.max || 100}
-              onChange={value => handleParameterChange(param.name, value)}
+              onChange={(value) => handleParameterChange(param.name, value)}
             />
           ))}
         </div>

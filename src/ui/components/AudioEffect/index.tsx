@@ -41,7 +41,7 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
 
   const handleParameterChange = useCallback(
     (effect: string, parameter: string, value: number) => {
-      setSliderValues(prev => ({
+      setSliderValues((prev) => ({
         ...prev,
         [effect]: {
           ...prev[effect],
@@ -114,7 +114,7 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
 
   const effectRows = useMemo(
     () =>
-      EFFECTS.map(effect => {
+      EFFECTS.map((effect) => {
         const effectLower = effect.toLowerCase();
         const isEnabled = enabledEffects.has(effectLower);
         const parameters = getEffectParameters(effect);

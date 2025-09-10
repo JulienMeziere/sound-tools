@@ -31,7 +31,7 @@ export class AudioProcessor {
       new ReverbEffect(),
     ];
 
-    effects.forEach(effect => {
+    effects.forEach((effect) => {
       this.availableEffects.set(effect.name, effect);
     });
   }
@@ -124,7 +124,7 @@ export class AudioProcessor {
     const audioElements = document.querySelectorAll('audio, video');
     Logger.info(`Found ${audioElements.length} media elements`);
 
-    audioElements.forEach(element => {
+    audioElements.forEach((element) => {
       const mediaElement = element as HTMLMediaElement;
       Logger.info(
         `Setting up media element: ${mediaElement.tagName}`,
@@ -154,11 +154,11 @@ export class AudioProcessor {
     if (!this.audioContext) return;
 
     // Disconnect all existing connections
-    this.sourceNodes.forEach(sourceNode => {
+    this.sourceNodes.forEach((sourceNode) => {
       sourceNode.disconnect();
     });
 
-    this.effectNodes.forEach(effectNode => {
+    this.effectNodes.forEach((effectNode) => {
       effectNode.disconnect();
     });
 
@@ -166,7 +166,7 @@ export class AudioProcessor {
     this.effectNodes.clear();
 
     // Rebuild the audio chain for each media element
-    this.sourceNodes.forEach(sourceNode => {
+    this.sourceNodes.forEach((sourceNode) => {
       this.connectAudioChain(sourceNode);
     });
   }
@@ -178,7 +178,7 @@ export class AudioProcessor {
     const { destination } = this.audioContext;
 
     // Create effect nodes for enabled effects in the specified order
-    AudioProcessor.EFFECT_ORDER.forEach(effectName => {
+    AudioProcessor.EFFECT_ORDER.forEach((effectName) => {
       if (this.enabledEffects.has(effectName)) {
         const effect = this.availableEffects.get(effectName);
         if (effect && this.audioContext) {
@@ -212,7 +212,7 @@ export class AudioProcessor {
   // Method to handle new media elements being added dynamically
   handleNewMediaElements(): void {
     const audioElements = document.querySelectorAll('audio, video');
-    audioElements.forEach(element => {
+    audioElements.forEach((element) => {
       this.setupMediaElement(element as HTMLMediaElement);
     });
   }

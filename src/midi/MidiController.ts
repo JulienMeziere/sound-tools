@@ -43,8 +43,51 @@ export class MidiController {
     try {
       Logger.info('Requesting MIDI access permission...');
 
-      // This will trigger the browser permission prompt
-      this.midiAccess = await navigator.requestMIDIAccess();
+      // Check if Web MIDI API is supported
+      if (!navigator.requestMIDIAccess) {
+        throw new Error('Web MIDI API is not supported in this browser');
+      }
+
+      // Check if we're in a secure context
+      if (!window.isSecureContext) {
+        Logger.warn('Not in secure context, MIDI may not work');
+      }
+
+      // Log the current context for debugging
+      Logger.info('Current context:', {
+        isSecureContext: window.isSecureContext,
+        origin: window.location?.origin || 'unknown',
+        protocol: window.location?.protocol || 'unknown',
+      });
+
+      // Check MIDI permission status first (as per MDN documentation)
+      if ('permissions' in navigator && 'query' in navigator.permissions) {
+        try {
+          const permissionStatus = await navigator.permissions.query({
+            name: 'midi' as PermissionName,
+          });
+          Logger.info('MIDI permission status:', permissionStatus.state);
+
+          if (permissionStatus.state === 'denied') {
+            throw new Error(
+              'MIDI permission was previously denied by the user'
+            );
+          }
+        } catch (permissionError) {
+          Logger.warn(
+            'Could not query MIDI permission status:',
+            permissionError
+          );
+          // Continue anyway, as some browsers might not support this
+        }
+      }
+
+      // Request MIDI access with explicit options (following MDN documentation)
+      this.midiAccess = await navigator.requestMIDIAccess({
+        sysex: false, // Don't request system exclusive access initially
+        software: true, // Include software synthesizers
+      });
+
       this.hasPermission = true;
 
       // Scan for available devices
@@ -57,6 +100,16 @@ export class MidiController {
     } catch (error) {
       this.hasPermission = false;
       Logger.error('MIDI permission denied or failed:', error);
+
+      // Log additional context for debugging
+      if (error instanceof Error) {
+        Logger.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        });
+      }
+
       this.events.onPermissionChange(false);
 
       return false;

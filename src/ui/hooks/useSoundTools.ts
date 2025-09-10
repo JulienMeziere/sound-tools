@@ -34,7 +34,7 @@ const sendTabMessage = (
 
 // Helper function to get active tab
 const getActiveTab = (callback: (tabId: number | undefined) => void): void => {
-  void chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+  void chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     callback(tabs[0]?.id);
   });
 };
@@ -46,7 +46,7 @@ export const useSoundTools = (): UseSoundToolsReturn => {
   const retryTimerRef = useRef<number | null>(null);
 
   const getEffectStatus = useCallback((tabId: number): void => {
-    sendTabMessage(tabId, { action: EFFECT_STATUS_ACTION }, response => {
+    sendTabMessage(tabId, { action: EFFECT_STATUS_ACTION }, (response) => {
       if (chrome.runtime.lastError) {
         Logger.warn(
           'Content script not ready for effects:',
@@ -69,7 +69,7 @@ export const useSoundTools = (): UseSoundToolsReturn => {
   }, []);
 
   const initializePopup = useCallback((): void => {
-    getActiveTab(tabId => {
+    getActiveTab((tabId) => {
       if (typeof tabId === 'number') {
         getEffectStatus(tabId);
       }
@@ -94,7 +94,7 @@ export const useSoundTools = (): UseSoundToolsReturn => {
       const effectLower = effect.toLowerCase();
       const isEnabled = enabledEffects.has(effectLower);
 
-      getActiveTab(tabId => {
+      getActiveTab((tabId) => {
         if (typeof tabId === 'number') {
           sendTabMessage(
             tabId,
@@ -102,7 +102,7 @@ export const useSoundTools = (): UseSoundToolsReturn => {
               action: isEnabled ? DISABLE_EFFECT_ACTION : ENABLE_EFFECT_ACTION,
               effect: effectLower,
             },
-            response => {
+            (response) => {
               if (chrome.runtime.lastError) {
                 Logger.error(
                   'Error toggling effect:',
@@ -113,7 +113,7 @@ export const useSoundTools = (): UseSoundToolsReturn => {
 
               // Update local state only if the message was successful
               if (response) {
-                setEnabledEffects(prevEffects => {
+                setEnabledEffects((prevEffects) => {
                   const newEffects = new Set(prevEffects);
                   if (isEnabled) {
                     newEffects.delete(effectLower);
@@ -133,7 +133,7 @@ export const useSoundTools = (): UseSoundToolsReturn => {
 
   const updateEffectParameter = useCallback(
     (effect: string, parameter: string, value: number): void => {
-      getActiveTab(tabId => {
+      getActiveTab((tabId) => {
         if (typeof tabId === 'number') {
           sendTabMessage(tabId, {
             action: UPDATE_EFFECT_PARAMETER_ACTION,

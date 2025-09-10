@@ -73,6 +73,9 @@ export default [
       // Prettier integration
       'prettier/prettier': 'error',
 
+      // Arrow function parentheses
+      'arrow-parens': ['error', 'always'],
+
       // TypeScript strict rules
       '@typescript-eslint/no-unused-vars': [
         'error',

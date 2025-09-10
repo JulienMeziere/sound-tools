@@ -1,149 +1,94 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useMidiController } from '../../hooks/useMidiController';
+import MidiRow from './MidiRow';
 import { Logger } from '../../../logger';
-import { MidiController, type MidiDevice } from '../../../midi/MidiController';
-import MidiPermissionButton from './MidiPermissionButton';
-import MidiDeviceList from './MidiDeviceList';
-import MidiConnectionStatus from './MidiConnectionStatus';
-
-type MidiFlowState = 'permission' | 'devices' | 'connected';
 
 interface MidiComponentProps {
   onEffectToggle?: (effectName: string) => void;
 }
 
-const CONTAINER_STYLE = {
-  marginBottom: '20px',
-  padding: '16px',
-  border: '1px solid #e5e7eb',
-  borderRadius: '8px',
-  backgroundColor: '#ffffff',
-} as const;
+// Constants moved outside component - matching AudioEffects structure
+const GRID_STYLE = { display: 'grid', gap: '10px' } as const;
 
-const MidiComponent: React.FC<MidiComponentProps> = ({ onEffectToggle }) => {
-  const [flowState, setFlowState] = useState<MidiFlowState>('permission');
+const MidiComponent: React.FC<MidiComponentProps> = () => {
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(
     null
   );
-  const [availableDevices, setAvailableDevices] = useState<MidiDevice[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const [connectedDeviceName, setConnectedDeviceName] = useState<string>('');
-  const [midiController, _setMidiController] = useState(
-    () =>
-      new MidiController({
-        onEffectToggle: (effectName: string) => {
-          onEffectToggle?.(effectName);
-        },
-        onConnectionChange: (connected: boolean, deviceName: string) => {
-          setIsConnected(connected);
-          setConnectedDeviceName(deviceName);
-          if (connected) {
-            setFlowState('connected');
-          }
-          setIsConnecting(false);
-          setConnectingDeviceId(null);
-        },
-        onPermissionChange: (granted: boolean) => {
-          if (granted) {
-            setFlowState('devices');
-          }
-          setIsRequestingPermission(false);
-        },
-        onDevicesScanned: (devices: MidiDevice[]) => {
-          setAvailableDevices(devices);
-        },
-      })
-  );
 
-  useEffect(() => {
-    // Check initial state
-    const status = midiController.getConnectionStatus();
-    if (status.hasPermission) {
-      setFlowState(status.isConnected ? 'connected' : 'devices');
-      setAvailableDevices(status.availableDevices);
-      setIsConnected(status.isConnected);
-      setConnectedDeviceName(status.deviceName || '');
-    }
-  }, [midiController]);
+  const {
+    hasPermission,
+    availableDevices,
+    isConnected,
+    connectedDeviceName,
+    requestPermission,
+    connectToDevice,
+    disconnect,
+  } = useMidiController();
 
   const handleRequestPermission = useCallback(async (): Promise<void> => {
     setIsRequestingPermission(true);
     try {
-      await midiController.requestMidiPermission();
+      await requestPermission();
     } catch (error) {
       Logger.error('Permission request failed:', error);
+    } finally {
       setIsRequestingPermission(false);
     }
-  }, [midiController]);
+  }, [requestPermission]);
 
   const handleDeviceSelect = useCallback(
     (deviceId: string): void => {
       setIsConnecting(true);
       setConnectingDeviceId(deviceId);
-      try {
-        midiController.connectToDevice(deviceId);
-      } catch (error) {
-        Logger.error('Device connection failed:', error);
+      connectToDevice(deviceId);
+      // Reset connecting state after a short delay
+      setTimeout(() => {
         setIsConnecting(false);
         setConnectingDeviceId(null);
-      }
+      }, 1000);
     },
-    [midiController]
+    [connectToDevice]
   );
 
   const handleDisconnect = useCallback((): void => {
-    midiController.disconnect();
-    setFlowState('devices');
-  }, [midiController]);
+    disconnect();
+  }, [disconnect]);
 
-  const permissionComponent = useMemo(
-    () =>
-      flowState === 'permission' ? (
-        <MidiPermissionButton
-          onRequestPermission={handleRequestPermission}
-          isRequesting={isRequestingPermission}
-        />
-      ) : null,
-    [flowState, handleRequestPermission, isRequestingPermission]
-  );
-
-  const deviceListComponent = useMemo(
-    () =>
-      flowState === 'devices' ? (
-        <MidiDeviceList
-          devices={availableDevices}
-          onDeviceSelect={handleDeviceSelect}
-          isConnecting={isConnecting}
-          connectingDeviceId={connectingDeviceId ?? ''}
-        />
-      ) : null,
+  const midiRow = useMemo(
+    () => (
+      <MidiRow
+        hasPermission={hasPermission}
+        isConnected={isConnected}
+        connectedDeviceName={connectedDeviceName}
+        availableDevices={availableDevices}
+        isRequesting={isRequestingPermission}
+        isConnecting={isConnecting}
+        connectingDeviceId={connectingDeviceId ?? ''}
+        onRequestPermission={handleRequestPermission}
+        onDeviceSelect={handleDeviceSelect}
+        onDisconnect={handleDisconnect}
+      />
+    ),
     [
-      flowState,
+      hasPermission,
+      isConnected,
+      connectedDeviceName,
       availableDevices,
-      handleDeviceSelect,
+      isRequestingPermission,
       isConnecting,
       connectingDeviceId,
+      handleRequestPermission,
+      handleDeviceSelect,
+      handleDisconnect,
     ]
   );
 
-  const connectionStatusComponent = useMemo(
-    () =>
-      flowState === 'connected' ? (
-        <MidiConnectionStatus
-          isConnected={isConnected}
-          deviceName={connectedDeviceName}
-          onDisconnect={handleDisconnect}
-        />
-      ) : null,
-    [flowState, isConnected, connectedDeviceName, handleDisconnect]
-  );
-
   return (
-    <div style={CONTAINER_STYLE}>
-      {permissionComponent}
-      {deviceListComponent}
-      {connectionStatusComponent}
+    <div>
+      <h3>MIDI Controller</h3>
+      <div style={GRID_STYLE}>{midiRow}</div>
     </div>
   );
 };

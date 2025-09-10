@@ -37,12 +37,12 @@ const SettingsButton: React.FC<SettingsButtonProps> = ({
 }) => (
   <button
     style={isActive ? SETTINGS_BUTTON_ACTIVE_STYLE : SETTINGS_BUTTON_STYLE}
-    onMouseOver={e => {
+    onMouseOver={(e) => {
       if (!isActive) {
         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
       }
     }}
-    onMouseOut={e => {
+    onMouseOut={(e) => {
       if (!isActive) {
         e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
       }
