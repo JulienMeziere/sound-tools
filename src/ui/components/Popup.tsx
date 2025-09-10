@@ -4,17 +4,17 @@ import { useSoundTools } from '../hooks/useSoundTools';
 
 import AudioEffects from './AudioEffect';
 import Header from './Header';
-import MidiController from './MidiController';
+// import MidiController from './MidiController';
 
 // Constants moved outside component
 const CONTAINER_STYLE = { padding: '20px' } as const;
 
 const Popup: React.FC = () => {
   const {
-    isConnected,
-    midiDevices,
+    // isConnected,
+    // midiDevices,
     enabledEffects,
-    connectMidi,
+    // connectMidi,
     toggleEffect,
     updateEffectParameter,
   } = useSoundTools();
@@ -22,11 +22,11 @@ const Popup: React.FC = () => {
   return (
     <div style={CONTAINER_STYLE}>
       <Header />
-      <MidiController
+      {/* <MidiController
         isConnected={isConnected}
         midiDevices={midiDevices}
         onConnectMidi={connectMidi}
-      />
+      /> */}
       <AudioEffects
         enabledEffects={enabledEffects}
         onToggleEffect={toggleEffect}
