@@ -10,6 +10,8 @@ interface AudioEffectsProps {
     parameter: string,
     value: number
   ) => void;
+  isLearning: boolean;
+  onRequestMidiLink: (targetId: string) => void;
 }
 
 // Constants moved outside component - Order: Distortion > Reverb > Filter
@@ -20,6 +22,8 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
   enabledEffects,
   onToggleEffect,
   onUpdateEffectParameter,
+  isLearning,
+  onRequestMidiLink,
 }) => {
   const [sliderValues, setSliderValues] = useState<
     Record<string, Record<string, number>>
@@ -127,10 +131,19 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
             onToggle={onToggleEffect}
             parameters={parameters}
             onParameterChange={handleParameterChange}
+            isLearning={isLearning}
+            onRequestMidiLink={onRequestMidiLink}
           />
         );
       }),
-    [enabledEffects, onToggleEffect, getEffectParameters, handleParameterChange]
+    [
+      enabledEffects,
+      onToggleEffect,
+      getEffectParameters,
+      handleParameterChange,
+      isLearning,
+      onRequestMidiLink,
+    ]
   );
 
   return (

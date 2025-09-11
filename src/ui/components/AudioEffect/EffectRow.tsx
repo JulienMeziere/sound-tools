@@ -18,6 +18,8 @@ interface EffectRowProps {
   onToggle: (effect: string) => void;
   parameters: EffectParameter[];
   onParameterChange: (effect: string, parameter: string, value: number) => void;
+  isLearning: boolean;
+  onRequestMidiLink: (targetId: string) => void;
 }
 
 // Constants moved outside component
@@ -38,8 +40,13 @@ const EffectRow: React.FC<EffectRowProps> = ({
   onToggle,
   parameters,
   onParameterChange,
+  isLearning,
+  onRequestMidiLink,
 }) => {
   const [isSliderOpen, setIsSliderOpen] = useState(false);
+
+  // Auto-expand sliders when in learning mode
+  const shouldShowSliders = isSliderOpen || isLearning;
 
   const toggleSlider = useCallback(() => {
     setIsSliderOpen((prev) => !prev);
@@ -52,6 +59,19 @@ const EffectRow: React.FC<EffectRowProps> = ({
     [effect, onParameterChange]
   );
 
+  const handleEffectButtonClick = useCallback(() => {
+    const targetId = `effect-toggle-${effect.toLowerCase()}`;
+    onRequestMidiLink(targetId);
+  }, [effect, onRequestMidiLink]);
+
+  const handleSliderClick = useCallback(
+    (parameterName: string) => {
+      const targetId = `effect-parameter-${effect.toLowerCase()}-${parameterName}`;
+      onRequestMidiLink(targetId);
+    },
+    [effect, onRequestMidiLink]
+  );
+
   return (
     <div>
       <div style={ROW_STYLE}>
@@ -59,11 +79,16 @@ const EffectRow: React.FC<EffectRowProps> = ({
           effect={effect}
           isEnabled={isEnabled}
           onToggle={onToggle}
+          isLearning={isLearning}
+          onMidiLinkRequest={handleEffectButtonClick}
         />
-        <SettingsButton isActive={isSliderOpen} onClick={toggleSlider} />
+        <SettingsButton isActive={shouldShowSliders} onClick={toggleSlider} />
       </div>
-      {isSliderOpen && (
-        <div style={SLIDER_CONTAINER_STYLE}>
+      {shouldShowSliders && (
+        <div
+          style={SLIDER_CONTAINER_STYLE}
+          className={isLearning ? 'sound-tools-learn-mode' : ''}
+        >
           {parameters.map((param) => (
             <Slider
               key={param.name}
@@ -72,6 +97,7 @@ const EffectRow: React.FC<EffectRowProps> = ({
               min={param.min || 0}
               max={param.max || 100}
               onChange={(value) => handleParameterChange(param.name, value)}
+              onMidiLinkRequest={() => handleSliderClick(param.name)}
             />
           ))}
         </div>

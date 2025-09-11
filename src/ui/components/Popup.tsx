@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { useSoundTools } from '../hooks/useSoundTools';
+import { useMidiController } from '../hooks/useMidiController';
 
 import AudioEffects from './AudioEffect';
 import Header from './Header';
@@ -12,6 +13,7 @@ const CONTAINER_STYLE = { padding: '20px' } as const;
 const Popup: React.FC = () => {
   const { enabledEffects, toggleEffect, updateEffectParameter } =
     useSoundTools();
+  const { isLearning, requestMidiLink } = useMidiController();
 
   return (
     <div style={CONTAINER_STYLE}>
@@ -21,6 +23,8 @@ const Popup: React.FC = () => {
         enabledEffects={enabledEffects}
         onToggleEffect={toggleEffect}
         onUpdateEffectParameter={updateEffectParameter}
+        isLearning={isLearning}
+        onRequestMidiLink={requestMidiLink}
       />
     </div>
   );

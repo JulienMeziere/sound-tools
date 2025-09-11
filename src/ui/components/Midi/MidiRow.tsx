@@ -8,6 +8,13 @@ interface MidiDevice {
   name: string;
 }
 
+interface MidiActivity {
+  type: 'note' | 'control' | 'unknown';
+  message: string;
+  timestamp: number;
+  rawData: number[];
+}
+
 interface MidiRowProps {
   hasPermission: boolean;
   isConnected: boolean;
@@ -16,9 +23,12 @@ interface MidiRowProps {
   isRequesting: boolean;
   isConnecting: boolean;
   connectingDeviceId: string;
+  lastActivity: MidiActivity | null;
+  isLearning: boolean;
   onRequestPermission: () => Promise<void>;
   onDeviceSelect: (deviceId: string) => void;
   onDisconnect: () => void;
+  onSetLearning: (enabled: boolean) => void;
 }
 
 // Constants moved outside component - matching EffectRow styling
@@ -61,14 +71,21 @@ const DEVICE_BUTTON_CONNECTING_STYLE = {
 } as const;
 
 const CONNECTED_INFO_STYLE = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
   padding: '12px',
   backgroundColor: 'rgba(76, 175, 80, 0.1)',
   border: '1px solid rgba(76, 175, 80, 0.3)',
   borderRadius: '4px',
   color: 'white',
+} as const;
+
+const CONNECTED_TEXT_STYLE = {
+  marginBottom: '12px',
+  fontSize: '14px',
+} as const;
+
+const BUTTON_CONTAINER_STYLE = {
+  display: 'flex',
+  gap: '8px',
 } as const;
 
 const DISCONNECT_BUTTON_STYLE = {
@@ -80,6 +97,57 @@ const DISCONNECT_BUTTON_STYLE = {
   cursor: 'pointer',
   fontSize: '12px',
   transition: 'all 0.2s',
+  flex: 1,
+} as const;
+
+const LEARN_BUTTON_STYLE = {
+  padding: '6px 12px',
+  backgroundColor: 'rgba(33, 150, 243, 0.2)',
+  color: 'white',
+  border: '1px solid rgba(33, 150, 243, 0.4)',
+  borderColor: 'rgba(33, 150, 243, 0.4)',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  fontSize: '12px',
+  transition: 'all 0.2s',
+  flex: 1,
+} as const;
+
+const LEARN_BUTTON_ACTIVE_STYLE = {
+  ...LEARN_BUTTON_STYLE,
+  backgroundColor: '#00BCD4',
+  borderColor: '#00BCD4',
+  boxShadow: '0 0 8px rgba(0, 188, 212, 0.4)',
+  fontWeight: '600',
+} as const;
+
+const ACTIVITY_CONTAINER_STYLE = {
+  marginTop: '12px',
+  padding: '8px',
+  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  border: '1px solid rgba(255, 255, 255, 0.08)',
+  borderRadius: '4px',
+  fontSize: '12px',
+  color: 'rgba(255, 255, 255, 0.8)',
+} as const;
+
+const ACTIVITY_HEADER_STYLE = {
+  marginBottom: '6px',
+  fontSize: '11px',
+  color: 'rgba(255, 255, 255, 0.6)',
+  fontWeight: '500',
+} as const;
+
+const ACTIVITY_MESSAGE_STYLE = {
+  fontFamily: 'monospace',
+  fontSize: '11px',
+  color: 'rgba(255, 255, 255, 0.9)',
+} as const;
+
+const ACTIVITY_TYPE_COLORS = {
+  note: '#4CAF50',
+  control: '#00BCD4',
+  unknown: '#9E9E9E',
 } as const;
 
 const MidiRow: React.FC<MidiRowProps> = ({
@@ -90,15 +158,22 @@ const MidiRow: React.FC<MidiRowProps> = ({
   isRequesting,
   isConnecting,
   connectingDeviceId,
+  lastActivity,
+  isLearning,
   onRequestPermission,
   onDeviceSelect,
   onDisconnect,
+  onSetLearning,
 }) => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const toggleDetails = useCallback(() => {
     setIsDetailsOpen((prev) => !prev);
   }, []);
+
+  const toggleLearning = useCallback(() => {
+    onSetLearning(!isLearning);
+  }, [isLearning, onSetLearning]);
 
   const handleButtonClick = useCallback(() => {
     if (!hasPermission) {
@@ -109,7 +184,7 @@ const MidiRow: React.FC<MidiRowProps> = ({
   }, [hasPermission, onRequestPermission, toggleDetails]);
 
   const getButtonLabel = useCallback(() => {
-    if (!hasPermission) return 'MIDI Permission';
+    if (!hasPermission) return 'Request MIDI Access';
     if (isConnected) return `MIDI: ${connectedDeviceName}`;
     return 'MIDI Controller';
   }, [hasPermission, isConnected, connectedDeviceName]);
@@ -121,21 +196,58 @@ const MidiRow: React.FC<MidiRowProps> = ({
       return (
         <div style={DETAILS_CONTAINER_STYLE}>
           <div style={CONNECTED_INFO_STYLE}>
-            <span>🎹 Connected to: {connectedDeviceName}</span>
-            <button
-              onClick={onDisconnect}
-              style={DISCONNECT_BUTTON_STYLE}
-              onMouseOver={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  'rgba(244, 67, 54, 0.3)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  'rgba(244, 67, 54, 0.2)';
-              }}
-            >
-              Disconnect
-            </button>
+            <div style={CONNECTED_TEXT_STYLE}>
+              🎹 Connected to: {connectedDeviceName}
+            </div>
+            <div style={BUTTON_CONTAINER_STYLE}>
+              <button
+                onClick={onDisconnect}
+                style={DISCONNECT_BUTTON_STYLE}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    'rgba(244, 67, 54, 0.3)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor =
+                    'rgba(244, 67, 54, 0.2)';
+                }}
+              >
+                Disconnect
+              </button>
+              <button
+                onClick={toggleLearning}
+                style={
+                  isLearning ? LEARN_BUTTON_ACTIVE_STYLE : LEARN_BUTTON_STYLE
+                }
+                onMouseOver={(e) => {
+                  if (!isLearning) {
+                    e.currentTarget.style.backgroundColor =
+                      'rgba(33, 150, 243, 0.3)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isLearning) {
+                    e.currentTarget.style.backgroundColor =
+                      'rgba(33, 150, 243, 0.2)';
+                  }
+                }}
+              >
+                {isLearning ? 'Learning...' : 'Learn'}
+              </button>
+            </div>
+            {isConnected && isLearning && lastActivity && (
+              <div style={ACTIVITY_CONTAINER_STYLE}>
+                <div style={ACTIVITY_HEADER_STYLE}>Last MIDI Activity:</div>
+                <div style={ACTIVITY_MESSAGE_STYLE}>
+                  <span
+                    style={{ color: ACTIVITY_TYPE_COLORS[lastActivity.type] }}
+                  >
+                    [{lastActivity.type.toUpperCase()}]
+                  </span>{' '}
+                  {lastActivity.message}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -204,9 +316,12 @@ const MidiRow: React.FC<MidiRowProps> = ({
     isConnected,
     connectedDeviceName,
     availableDevices,
+    onDisconnect,
+    toggleLearning,
+    isLearning,
+    lastActivity,
     isConnecting,
     connectingDeviceId,
-    onDisconnect,
     onDeviceSelect,
   ]);
 

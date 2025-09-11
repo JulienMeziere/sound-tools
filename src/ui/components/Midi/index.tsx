@@ -22,9 +22,12 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
     availableDevices,
     isConnected,
     connectedDeviceName,
+    lastActivity,
+    isLearning,
     requestPermission,
     connectToDevice,
     disconnect,
+    setLearning,
   } = useMidiController();
 
   const handleRequestPermission = useCallback(async (): Promise<void> => {
@@ -66,9 +69,12 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
         isRequesting={isRequestingPermission}
         isConnecting={isConnecting}
         connectingDeviceId={connectingDeviceId ?? ''}
+        lastActivity={lastActivity}
+        isLearning={isLearning}
         onRequestPermission={handleRequestPermission}
         onDeviceSelect={handleDeviceSelect}
         onDisconnect={handleDisconnect}
+        onSetLearning={setLearning}
       />
     ),
     [
@@ -79,9 +85,12 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
       isRequestingPermission,
       isConnecting,
       connectingDeviceId,
+      lastActivity,
+      isLearning,
       handleRequestPermission,
       handleDeviceSelect,
       handleDisconnect,
+      setLearning,
     ]
   );
 

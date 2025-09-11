@@ -12,6 +12,7 @@ interface SliderProps {
   min: number;
   max: number;
   onChange: (value: number) => void;
+  onMidiLinkRequest?: () => void;
 }
 
 // Constants moved outside component
@@ -78,6 +79,7 @@ const Slider: React.FC<SliderProps> = ({
   min,
   max,
   onChange,
+  onMidiLinkRequest,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const invisibleTrackRef = useRef<HTMLDivElement>(null);
@@ -203,8 +205,18 @@ const Slider: React.FC<SliderProps> = ({
   // Memoize formatted value
   const formattedValue = useMemo(() => value.toFixed(0), [value]);
 
+  const handleRightClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (onMidiLinkRequest) {
+        onMidiLinkRequest();
+      }
+    },
+    [onMidiLinkRequest]
+  );
+
   return (
-    <div style={SLIDER_CONTAINER_STYLE}>
+    <div style={SLIDER_CONTAINER_STYLE} onContextMenu={handleRightClick}>
       <div style={SLIDER_LABEL_STYLE}>
         <span>{label}</span>
         <span>{formattedValue}</span>

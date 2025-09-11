@@ -4,6 +4,8 @@ interface EffectButtonProps {
   effect: string;
   isEnabled: boolean;
   onToggle: (effect: string) => void;
+  isLearning: boolean;
+  onMidiLinkRequest: () => void;
 }
 
 // Constants moved outside component
@@ -34,10 +36,20 @@ const EffectButton: React.FC<EffectButtonProps> = ({
   effect,
   isEnabled,
   onToggle,
+  isLearning,
+  onMidiLinkRequest,
 }) => {
   const handleClick = useCallback(() => {
     onToggle(effect);
   }, [effect, onToggle]);
+
+  const handleRightClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      onMidiLinkRequest();
+    },
+    [onMidiLinkRequest]
+  );
 
   const handleMouseOver = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -70,7 +82,9 @@ const EffectButton: React.FC<EffectButtonProps> = ({
   return (
     <button
       onClick={handleClick}
+      onContextMenu={handleRightClick}
       style={buttonStyle}
+      className={isLearning ? 'sound-tools-learn-mode' : ''}
       onMouseOver={handleMouseOver}
       onMouseOut={handleMouseOut}
     >

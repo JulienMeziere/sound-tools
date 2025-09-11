@@ -6,14 +6,26 @@ interface MidiDevice {
   name: string;
 }
 
+interface MidiActivity {
+  type: 'note' | 'control' | 'unknown';
+  message: string;
+  timestamp: number;
+  rawData: number[];
+}
+
 interface UseMidiControllerReturn {
   hasPermission: boolean;
   availableDevices: MidiDevice[];
   isConnected: boolean;
   connectedDeviceName: string;
+  lastActivity: MidiActivity | null;
+  isLearning: boolean;
+  isLinked: boolean;
   requestPermission: () => Promise<void>;
   connectToDevice: (deviceId: string) => void;
   disconnect: () => void;
+  setLearning: (enabled: boolean) => void;
+  requestMidiLink: (targetId: string) => void;
 }
 
 // Constants
@@ -22,6 +34,8 @@ const GET_MIDI_STATUS_ACTION = 'getMidiStatus';
 const REQUEST_MIDI_PERMISSION_ACTION = 'requestMidiPermission';
 const CONNECT_TO_MIDI_DEVICE_ACTION = 'connectToMidiDevice';
 const DISCONNECT_MIDI_ACTION = 'disconnectMidi';
+const SET_MIDI_LEARNING_ACTION = 'setMidiLearning';
+const REQUEST_MIDI_LINK_ACTION = 'requestMidiLink';
 
 // Helper function to send tab messages
 const sendTabMessage = (
@@ -48,6 +62,9 @@ export const useMidiController = (): UseMidiControllerReturn => {
   const [availableDevices, setAvailableDevices] = useState<MidiDevice[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [connectedDeviceName, setConnectedDeviceName] = useState('');
+  const [lastActivity, setLastActivity] = useState<MidiActivity | null>(null);
+  const [isLearning, setIsLearning] = useState(false);
+  const [isLinked, setIsLinked] = useState(false);
 
   // Use ref for cleanup timer to avoid stale closures
   const retryTimerRef = useRef<number | null>(null);
@@ -67,6 +84,9 @@ export const useMidiController = (): UseMidiControllerReturn => {
           availableDevices?: MidiDevice[];
           isConnected?: boolean;
           deviceName?: string | null;
+          lastActivity?: MidiActivity | null;
+          isLearning?: boolean;
+          isLinked?: boolean;
         };
         if (typeof resp.hasPermission === 'boolean') {
           setHasPermission(resp.hasPermission);
@@ -79,6 +99,15 @@ export const useMidiController = (): UseMidiControllerReturn => {
         }
         if (typeof resp.deviceName === 'string') {
           setConnectedDeviceName(resp.deviceName);
+        }
+        if (resp.lastActivity !== undefined) {
+          setLastActivity(resp.lastActivity);
+        }
+        if (typeof resp.isLearning === 'boolean') {
+          setIsLearning(resp.isLearning);
+        }
+        if (typeof resp.isLinked === 'boolean') {
+          setIsLinked(resp.isLinked);
         }
       }
     });
@@ -97,11 +126,55 @@ export const useMidiController = (): UseMidiControllerReturn => {
     initializeMidi();
     retryTimerRef.current = window.setTimeout(initializeMidi, RETRY_DELAY);
 
+    // Set up message listener for real-time updates from content script
+    const messageListener = (
+      message: { type?: string; data?: unknown },
+      sender: chrome.runtime.MessageSender
+    ) => {
+      // Only process messages from content scripts
+      if (sender.tab && message.type === 'midiStatusUpdate') {
+        const update = message.data as {
+          hasPermission?: boolean;
+          availableDevices?: MidiDevice[];
+          isConnected?: boolean;
+          deviceName?: string | null;
+          lastActivity?: MidiActivity | null;
+          isLearning?: boolean;
+          isLinked?: boolean;
+        };
+
+        if (typeof update.hasPermission === 'boolean') {
+          setHasPermission(update.hasPermission);
+        }
+        if (Array.isArray(update.availableDevices)) {
+          setAvailableDevices(update.availableDevices);
+        }
+        if (typeof update.isConnected === 'boolean') {
+          setIsConnected(update.isConnected);
+        }
+        if (typeof update.deviceName === 'string') {
+          setConnectedDeviceName(update.deviceName);
+        }
+        if (update.lastActivity !== undefined) {
+          setLastActivity(update.lastActivity);
+        }
+        if (typeof update.isLearning === 'boolean') {
+          setIsLearning(update.isLearning);
+        }
+        if (typeof update.isLinked === 'boolean') {
+          setIsLinked(update.isLinked);
+        }
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(messageListener);
+
     return (): void => {
       if (retryTimerRef.current !== null) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      chrome.runtime.onMessage.removeListener(messageListener);
     };
   }, [initializeMidi]);
 
@@ -135,49 +208,58 @@ export const useMidiController = (): UseMidiControllerReturn => {
     [getMidiStatus]
   );
 
-  const connectToDevice = useCallback(
-    (deviceId: string): void => {
-      getActiveTab((tabId) => {
-        if (typeof tabId === 'number') {
-          sendTabMessage(
-            tabId,
-            { action: CONNECT_TO_MIDI_DEVICE_ACTION, deviceId },
-            () => {
-              if (chrome.runtime.lastError) {
-                Logger.error(
-                  'Error connecting to MIDI device:',
-                  chrome.runtime.lastError.message
-                );
-                return;
-              }
-              // Refresh status after connection
-              setTimeout(() => getMidiStatus(tabId), 500);
-            }
-          );
-        }
-      });
-    },
-    [getMidiStatus]
-  );
+  const connectToDevice = useCallback((deviceId: string): void => {
+    getActiveTab((tabId) => {
+      if (typeof tabId === 'number') {
+        sendTabMessage(tabId, {
+          action: CONNECT_TO_MIDI_DEVICE_ACTION,
+          deviceId,
+        });
+        // No need to manually refresh - we'll get real-time update via broadcast
+      }
+    });
+  }, []);
 
   const disconnect = useCallback((): void => {
     getActiveTab((tabId) => {
       if (typeof tabId === 'number') {
-        sendTabMessage(tabId, { action: DISCONNECT_MIDI_ACTION }, () => {
-          // Refresh status after disconnection
-          setTimeout(() => getMidiStatus(tabId), 500);
-        });
+        sendTabMessage(tabId, { action: DISCONNECT_MIDI_ACTION });
+        // No need to manually refresh - we'll get real-time update via broadcast
       }
     });
-  }, [getMidiStatus]);
+  }, []);
+
+  const setLearning = useCallback((enabled: boolean): void => {
+    getActiveTab((tabId) => {
+      if (typeof tabId === 'number') {
+        sendTabMessage(tabId, { action: SET_MIDI_LEARNING_ACTION, enabled });
+        // No need to manually refresh - we'll get real-time update via broadcast
+      }
+    });
+  }, []);
+
+  // Note: setLinked removed - linked state is now automatic based on active mappings
+
+  const requestMidiLink = useCallback((targetId: string): void => {
+    getActiveTab((tabId) => {
+      if (typeof tabId === 'number') {
+        sendTabMessage(tabId, { action: REQUEST_MIDI_LINK_ACTION, targetId });
+      }
+    });
+  }, []);
 
   return {
     hasPermission,
     availableDevices,
     isConnected,
     connectedDeviceName,
+    lastActivity,
+    isLearning,
+    isLinked,
     requestPermission,
     connectToDevice,
     disconnect,
+    setLearning,
+    requestMidiLink,
   };
 };

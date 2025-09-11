@@ -5,11 +5,32 @@ export interface MidiDevice {
   name: string;
 }
 
+export interface MidiActivity {
+  type: 'note' | 'control' | 'unknown';
+  message: string;
+  timestamp: number;
+  rawData: number[];
+}
+
+export interface MidiMapping {
+  id: string; // Unique identifier for the UI element
+  type: 'effect-toggle' | 'effect-parameter'; // Type of UI element
+  effect: string; // Effect name (for both toggle and parameter)
+  parameter?: string; // Parameter name (for parameter type only)
+  midiType: 'note' | 'control'; // Type of MIDI message
+  midiChannel: number; // MIDI channel (1-16)
+  midiNote?: number; // Note number (for note type)
+  midiCC?: number; // CC number (for control type)
+}
+
 export interface MidiControllerEvents {
   onEffectToggle: (effectName: string) => void;
   onConnectionChange: (isConnected: boolean, deviceName: string) => void;
   onPermissionChange: (granted: boolean) => void;
   onDevicesScanned: (devices: MidiDevice[]) => void;
+  onMidiActivity: (activity: MidiActivity) => void;
+  onMidiMappingTriggered: (mapping: MidiMapping, value: number) => void;
+  onMidiMappingCreated: (mapping: MidiMapping) => void;
 }
 
 export class MidiController {
@@ -19,6 +40,11 @@ export class MidiController {
   private connectedDeviceName: string | null = null;
   private availableDevices: MidiDevice[] = [];
   private hasPermission = false;
+  private lastActivity: MidiActivity | null = null;
+  private isLearning = false;
+  private isLinked = false; // New linked mode
+  private readonly midiMappings: Map<string, MidiMapping> = new Map(); // MIDI mapping storage
+  private pendingLinkTarget: string | null = null; // UI element waiting for MIDI link
   private readonly events: MidiControllerEvents;
 
   constructor(events: MidiControllerEvents) {
@@ -30,12 +56,18 @@ export class MidiController {
     deviceName: string | null;
     hasPermission: boolean;
     availableDevices: MidiDevice[];
+    lastActivity: MidiActivity | null;
+    isLearning: boolean;
+    isLinked: boolean;
   } {
     return {
       isConnected: this.isConnected,
       deviceName: this.connectedDeviceName,
       hasPermission: this.hasPermission,
       availableDevices: [...this.availableDevices],
+      lastActivity: this.isLearning ? this.lastActivity : null,
+      isLearning: this.isLearning,
+      isLinked: this.isLinked,
     };
   }
 
@@ -149,10 +181,12 @@ export class MidiController {
         this.disconnect();
       }
 
-      // Connect to the selected device
-      device.onmidimessage = (event: MIDIMessageEvent) => {
-        this.handleMidiMessage(event);
-      };
+      // Only start listening if learning is enabled
+      if (this.isLearning) {
+        device.onmidimessage = (event: MIDIMessageEvent) => {
+          this.handleMidiMessage(event);
+        };
+      }
 
       this.isConnected = true;
       this.connectedDeviceId = deviceId;
@@ -181,6 +215,13 @@ export class MidiController {
     }
 
     this.isConnected = false;
+    this.isLearning = false;
+    this.lastActivity = null;
+    this.pendingLinkTarget = null;
+    this.midiMappings.clear();
+
+    // Update linked state after clearing mappings
+    this.updateLinkedState();
     const previousDeviceName = this.connectedDeviceName;
     this.connectedDeviceId = null;
     this.connectedDeviceName = null;
@@ -189,5 +230,294 @@ export class MidiController {
     this.events.onConnectionChange(this.isConnected, '');
   }
 
-  private handleMidiMessage(_event: MIDIMessageEvent): void {}
+  setLearning(enabled: boolean): void {
+    this.isLearning = enabled;
+
+    // Clear activity when disabling learning
+    if (!enabled) {
+      this.lastActivity = null;
+    }
+
+    // Update MIDI message listening based on learning or linked state
+    this.updateMidiListening();
+
+    Logger.info('MIDI learning:', enabled ? 'enabled' : 'disabled');
+  }
+
+  // Note: setLinked is now handled automatically based on active mappings
+
+  private updateMidiListening(): void {
+    if (this.isConnected && this.midiAccess && this.connectedDeviceId) {
+      const device = this.midiAccess.inputs.get(this.connectedDeviceId);
+      if (device) {
+        if (this.isLearning || this.isLinked) {
+          // Start listening for MIDI messages
+          device.onmidimessage = (event: MIDIMessageEvent) => {
+            this.handleMidiMessage(event);
+          };
+        } else {
+          // Stop listening for MIDI messages
+          device.onmidimessage = null;
+        }
+      }
+    }
+  }
+
+  requestMidiLink(targetId: string): void {
+    this.pendingLinkTarget = targetId;
+    Logger.info('MIDI link requested for:', targetId);
+  }
+
+  getMidiMappings(): MidiMapping[] {
+    return Array.from(this.midiMappings.values());
+  }
+
+  private updateLinkedState(): void {
+    const hasActiveMappings = this.midiMappings.size > 0;
+    const wasLinked = this.isLinked;
+    this.isLinked = hasActiveMappings;
+
+    // Log state change
+    if (wasLinked !== this.isLinked) {
+      Logger.info(
+        'MIDI linked mode:',
+        this.isLinked ? 'enabled (has mappings)' : 'disabled (no mappings)'
+      );
+
+      // Update MIDI listening when linked state changes
+      this.updateMidiListening();
+    }
+  }
+
+  private handleMidiMessage(event: MIDIMessageEvent): void {
+    const data = Array.from(event.data || []);
+    const [status, data1, data2] = data;
+
+    // Parse MIDI message type and create activity
+    const activity = this.parseMidiMessage(
+      status || 0,
+      data1 || 0,
+      data2 || 0,
+      data
+    );
+
+    // Only process if activity is not null (ignored messages return null)
+    if (activity !== null) {
+      // Handle linking if we have a pending target
+      if (
+        this.pendingLinkTarget &&
+        (activity.type === 'note' || activity.type === 'control')
+      ) {
+        this.createMidiLink(activity, status || 0, data1 || 0);
+        this.pendingLinkTarget = null;
+      }
+
+      // Check for existing mappings and trigger them
+      this.checkMidiMappings(activity, status || 0, data1 || 0, data2 || 0);
+
+      // Store activity and notify listeners (only if learning mode is active)
+      if (this.isLearning) {
+        this.lastActivity = activity;
+        this.events.onMidiActivity(activity);
+        Logger.info('MIDI Activity:', activity);
+      }
+    }
+  }
+
+  private createMidiLink(
+    activity: MidiActivity,
+    status: number,
+    data1: number
+  ): void {
+    if (!this.pendingLinkTarget) return;
+
+    const channel = (status & 0x0f) + 1;
+
+    // Parse the target ID to determine mapping type
+    const parts = this.pendingLinkTarget.split('-');
+    const [type, effect, parameter] = parts;
+
+    if (!type || !effect) {
+      Logger.error('Invalid target ID format:', this.pendingLinkTarget);
+      return;
+    }
+
+    const mapping: MidiMapping = {
+      id: this.pendingLinkTarget,
+      type: type as 'effect-toggle' | 'effect-parameter',
+      effect,
+      midiType: activity.type as 'note' | 'control',
+      midiChannel: channel,
+    };
+
+    // Only add parameter if it exists
+    if (parameter) {
+      mapping.parameter = parameter;
+    }
+
+    if (activity.type === 'note') {
+      mapping.midiNote = data1;
+    } else if (activity.type === 'control') {
+      mapping.midiCC = data1;
+    }
+
+    // Create a unique key for this MIDI input
+    const midiKey = this.getMidiKey(mapping.midiType, channel, data1);
+
+    // Store the mapping
+    this.midiMappings.set(midiKey, mapping);
+
+    // Update linked state based on active mappings
+    this.updateLinkedState();
+
+    Logger.info('MIDI mapping created:', mapping);
+
+    // Notify that a mapping was created
+    this.events.onMidiMappingCreated(mapping);
+  }
+
+  private checkMidiMappings(
+    activity: MidiActivity,
+    status: number,
+    data1: number,
+    data2: number
+  ): void {
+    const channel = (status & 0x0f) + 1;
+    const midiKey = this.getMidiKey(
+      activity.type as 'note' | 'control',
+      channel,
+      data1
+    );
+
+    const mapping = this.midiMappings.get(midiKey);
+    if (mapping) {
+      // Skip note off messages for note mappings
+      if (mapping.midiType === 'note' && (status & 0xf0) === 0x80) {
+        return;
+      }
+
+      // Skip note on with velocity 0 (which is note off)
+      if (
+        mapping.midiType === 'note' &&
+        (status & 0xf0) === 0x90 &&
+        data2 === 0
+      ) {
+        return;
+      }
+
+      // Calculate the value based on MIDI message type
+      let value: number;
+      if (mapping.midiType === 'note') {
+        // For notes, use velocity (0-127) and scale to 0-100
+        value = Math.round((data2 / 127) * 100);
+
+        // For effect toggles, bottom half = off, upper half = on
+        if (mapping.type === 'effect-toggle') {
+          value = data2 < 64 ? 0 : 1;
+        }
+      } else {
+        // For controls, scale from 0-127 to 0-100
+        value = Math.round((data2 / 127) * 100);
+      }
+
+      // Trigger the mapping
+      this.events.onMidiMappingTriggered(mapping, value);
+    }
+  }
+
+  private getMidiKey(
+    type: 'note' | 'control',
+    channel: number,
+    noteOrCC: number
+  ): string {
+    return `${type}-${channel}-${noteOrCC}`;
+  }
+
+  private parseMidiMessage(
+    status: number,
+    data1: number,
+    data2: number,
+    rawData: number[]
+  ): MidiActivity | null {
+    const timestamp = Date.now();
+    const messageType = status & 0xf0;
+
+    switch (messageType) {
+      case 0x90: // Note On
+        if (data2 === 0) {
+          // Note On with velocity 0 is actually Note Off
+          return {
+            type: 'note',
+            message: `${this.getNoteNameFromNumber(data1)}`,
+            timestamp,
+            rawData,
+          };
+        }
+        return {
+          type: 'note',
+          message: `${this.getNoteNameFromNumber(data1)}`,
+          timestamp,
+          rawData,
+        };
+
+      case 0x80: // Note Off
+        return {
+          type: 'note',
+          message: `${this.getNoteNameFromNumber(data1)}`,
+          timestamp,
+          rawData,
+        };
+
+      case 0xb0: {
+        // Control Change
+        return {
+          type: 'control',
+          message: `CC${data1}`,
+          timestamp,
+          rawData,
+        };
+      }
+
+      case 0xc0: // Program Change - ignore these messages
+        return null;
+
+      case 0xe0: {
+        // Pitch Bend
+        return {
+          type: 'control',
+          message: 'Pitch Bend',
+          timestamp,
+          rawData,
+        };
+      }
+
+      default:
+        return {
+          type: 'unknown',
+          message: 'MIDI',
+          timestamp,
+          rawData,
+        };
+    }
+  }
+
+  private getNoteNameFromNumber(noteNumber: number): string {
+    const noteNames = [
+      'C',
+      'C#',
+      'D',
+      'D#',
+      'E',
+      'F',
+      'F#',
+      'G',
+      'G#',
+      'A',
+      'A#',
+      'B',
+    ];
+    const octave = Math.floor(noteNumber / 12) - 1;
+    const note = noteNames[noteNumber % 12];
+    return `${note}${octave}`;
+  }
 }

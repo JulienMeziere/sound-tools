@@ -6,6 +6,7 @@ import {
   type MidiDevice,
 } from '../midi/MidiController';
 import { NotificationManager } from '../notifications/NotificationManager';
+import { MidiActivity, MidiMapping } from '../midi/MidiController';
 
 export class ContentScriptManager implements MidiControllerEvents {
   private readonly audioProcessor: AudioProcessor;
@@ -37,6 +38,9 @@ export class ContentScriptManager implements MidiControllerEvents {
               availableDevices: [],
               isConnected: false,
               deviceName: null,
+              lastActivity: null,
+              isLearning: false,
+              isLinked: false,
             });
           } else {
             const status = this.midiController.getConnectionStatus();
@@ -60,6 +64,24 @@ export class ContentScriptManager implements MidiControllerEvents {
         case 'disconnectMidi':
           if (this.midiController) {
             this.disconnectMidi();
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'setMidiLearning':
+          if (this.midiController) {
+            this.midiController.setLearning(request.enabled);
+            // Send real-time update to popup
+            this.broadcastMidiStatusUpdate();
+          }
+          sendResponse({ success: true });
+          break;
+
+        case 'requestMidiLink':
+          if (this.midiController) {
+            this.midiController.requestMidiLink(request.targetId);
+            // Send real-time update to popup after requesting link
+            this.broadcastMidiStatusUpdate();
           }
           sendResponse({ success: true });
           break;
@@ -190,6 +212,8 @@ export class ContentScriptManager implements MidiControllerEvents {
     Logger.info(
       `MIDI connection changed: ${isConnected}, device: ${deviceName}`
     );
+    // Send real-time update to popup
+    this.broadcastMidiStatusUpdate();
   }
 
   onPermissionChange(granted: boolean): void {
@@ -198,5 +222,58 @@ export class ContentScriptManager implements MidiControllerEvents {
 
   onDevicesScanned(devices: MidiDevice[]): void {
     Logger.info('MIDI devices scanned:', devices);
+  }
+
+  onMidiActivity(_activity: MidiActivity): void {
+    // Activity is already logged in MidiController, no need to log here
+    // Send real-time update to popup
+    this.broadcastMidiStatusUpdate();
+  }
+
+  onMidiMappingTriggered(
+    mapping: import('../midi/MidiController').MidiMapping,
+    value: number
+  ): void {
+    Logger.info('MIDI mapping triggered:', mapping, 'value:', value);
+
+    // Execute the mapping
+    if (mapping.type === 'effect-toggle') {
+      if (mapping.effect) {
+        if (value === 1) {
+          this.enableEffect(mapping.effect);
+        } else {
+          this.disableEffect(mapping.effect);
+        }
+      }
+    } else if (mapping.type === 'effect-parameter') {
+      if (mapping.effect && mapping.parameter) {
+        this.audioProcessor.updateEffectParameter(
+          mapping.effect,
+          mapping.parameter,
+          value
+        );
+      }
+    }
+  }
+
+  onMidiMappingCreated(_mapping: MidiMapping): void {
+    // Broadcast status update when a mapping is created (linked state may have changed)
+    this.broadcastMidiStatusUpdate();
+  }
+
+  private broadcastMidiStatusUpdate(): void {
+    if (!this.midiController) return;
+
+    const status = this.midiController.getConnectionStatus();
+
+    // Send update to all extension contexts (popups, etc.)
+    chrome.runtime
+      .sendMessage({
+        type: 'midiStatusUpdate',
+        data: status,
+      })
+      .catch(() => {
+        // Ignore errors if no popup is open
+      });
   }
 }
