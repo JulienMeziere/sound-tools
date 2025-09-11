@@ -25,6 +25,7 @@ interface MidiRowProps {
   connectingDeviceId: string;
   lastActivity: MidiActivity | null;
   isLearning: boolean;
+  isPreLearning: boolean;
   onRequestPermission: () => Promise<void>;
   onDeviceSelect: (deviceId: string) => void;
   onDisconnect: () => void;
@@ -160,6 +161,7 @@ const MidiRow: React.FC<MidiRowProps> = ({
   connectingDeviceId,
   lastActivity,
   isLearning,
+  isPreLearning,
   onRequestPermission,
   onDeviceSelect,
   onDisconnect,
@@ -172,8 +174,8 @@ const MidiRow: React.FC<MidiRowProps> = ({
   }, []);
 
   const toggleLearning = useCallback(() => {
-    onSetLearning(!isLearning);
-  }, [isLearning, onSetLearning]);
+    onSetLearning(!(isLearning || isPreLearning));
+  }, [isLearning, isPreLearning, onSetLearning]);
 
   const handleButtonClick = useCallback(() => {
     if (!hasPermission) {
@@ -220,19 +222,23 @@ const MidiRow: React.FC<MidiRowProps> = ({
                   isLearning ? LEARN_BUTTON_ACTIVE_STYLE : LEARN_BUTTON_STYLE
                 }
                 onMouseOver={(e) => {
-                  if (!isLearning) {
+                  if (!isLearning && !isPreLearning) {
                     e.currentTarget.style.backgroundColor =
                       'rgba(33, 150, 243, 0.3)';
                   }
                 }}
                 onMouseOut={(e) => {
-                  if (!isLearning) {
+                  if (!isLearning && !isPreLearning) {
                     e.currentTarget.style.backgroundColor =
                       'rgba(33, 150, 243, 0.2)';
                   }
                 }}
               >
-                {isLearning ? 'Learning...' : 'Learn'}
+                {isLearning
+                  ? 'Learning...'
+                  : isPreLearning
+                    ? 'Waiting...'
+                    : 'Learn'}
               </button>
             </div>
             {isConnected && isLearning && lastActivity && (
@@ -245,6 +251,20 @@ const MidiRow: React.FC<MidiRowProps> = ({
                     [{lastActivity.type.toUpperCase()}]
                   </span>{' '}
                   {lastActivity.message}
+                </div>
+              </div>
+            )}
+            {isConnected && isPreLearning && (
+              <div style={ACTIVITY_CONTAINER_STYLE}>
+                <div style={ACTIVITY_HEADER_STYLE}>Last MIDI Activity:</div>
+                <div
+                  style={{
+                    ...ACTIVITY_MESSAGE_STYLE,
+                    color: 'rgba(255, 193, 7, 0.9)',
+                  }}
+                >
+                  Please move a control on your MIDI device first, then try
+                  again.
                 </div>
               </div>
             )}
@@ -320,6 +340,7 @@ const MidiRow: React.FC<MidiRowProps> = ({
     toggleLearning,
     isLearning,
     lastActivity,
+    isPreLearning,
     isConnecting,
     connectingDeviceId,
     onDeviceSelect,

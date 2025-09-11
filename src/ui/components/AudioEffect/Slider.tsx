@@ -13,6 +13,7 @@ interface SliderProps {
   max: number;
   onChange: (value: number) => void;
   onMidiLinkRequest?: () => void;
+  isLearning?: boolean;
 }
 
 // Constants moved outside component
@@ -80,6 +81,7 @@ const Slider: React.FC<SliderProps> = ({
   max,
   onChange,
   onMidiLinkRequest,
+  isLearning,
 }) => {
   const trackRef = useRef<HTMLDivElement>(null);
   const invisibleTrackRef = useRef<HTMLDivElement>(null);
@@ -205,18 +207,19 @@ const Slider: React.FC<SliderProps> = ({
   // Memoize formatted value
   const formattedValue = useMemo(() => value.toFixed(0), [value]);
 
-  const handleRightClick = useCallback(
+  const handleContainerClick = useCallback(
     (e: React.MouseEvent) => {
-      e.preventDefault();
-      if (onMidiLinkRequest) {
+      if (isLearning && onMidiLinkRequest) {
+        // In learn mode, clicking the container requests MIDI link
+        e.stopPropagation(); // Prevent any other click handlers
         onMidiLinkRequest();
       }
     },
-    [onMidiLinkRequest]
+    [isLearning, onMidiLinkRequest]
   );
 
   return (
-    <div style={SLIDER_CONTAINER_STYLE} onContextMenu={handleRightClick}>
+    <div style={SLIDER_CONTAINER_STYLE} onClick={handleContainerClick}>
       <div style={SLIDER_LABEL_STYLE}>
         <span>{label}</span>
         <span>{formattedValue}</span>

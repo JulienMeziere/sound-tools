@@ -21,6 +21,7 @@ interface UseMidiControllerReturn {
   lastActivity: MidiActivity | null;
   isLearning: boolean;
   isLinked: boolean;
+  isPreLearning: boolean;
   requestPermission: () => Promise<void>;
   connectToDevice: (deviceId: string) => void;
   disconnect: () => void;
@@ -65,6 +66,8 @@ export const useMidiController = (): UseMidiControllerReturn => {
   const [lastActivity, setLastActivity] = useState<MidiActivity | null>(null);
   const [isLearning, setIsLearning] = useState(false);
   const [isLinked, setIsLinked] = useState(false);
+  const [hasRecentActivity, setHasRecentActivity] = useState(false);
+  const [isPreLearning, setIsPreLearning] = useState(false);
 
   // Use ref for cleanup timer to avoid stale closures
   const retryTimerRef = useRef<number | null>(null);
@@ -87,6 +90,7 @@ export const useMidiController = (): UseMidiControllerReturn => {
           lastActivity?: MidiActivity | null;
           isLearning?: boolean;
           isLinked?: boolean;
+          hasRecentActivity?: boolean;
         };
         if (typeof resp.hasPermission === 'boolean') {
           setHasPermission(resp.hasPermission);
@@ -108,6 +112,9 @@ export const useMidiController = (): UseMidiControllerReturn => {
         }
         if (typeof resp.isLinked === 'boolean') {
           setIsLinked(resp.isLinked);
+        }
+        if (typeof resp.hasRecentActivity === 'boolean') {
+          setHasRecentActivity(resp.hasRecentActivity);
         }
       }
     });
@@ -141,6 +148,7 @@ export const useMidiController = (): UseMidiControllerReturn => {
           lastActivity?: MidiActivity | null;
           isLearning?: boolean;
           isLinked?: boolean;
+          hasRecentActivity?: boolean;
         };
 
         if (typeof update.hasPermission === 'boolean') {
@@ -164,6 +172,9 @@ export const useMidiController = (): UseMidiControllerReturn => {
         if (typeof update.isLinked === 'boolean') {
           setIsLinked(update.isLinked);
         }
+        if (typeof update.hasRecentActivity === 'boolean') {
+          setHasRecentActivity(update.hasRecentActivity);
+        }
       }
     };
 
@@ -177,6 +188,22 @@ export const useMidiController = (): UseMidiControllerReturn => {
       chrome.runtime.onMessage.removeListener(messageListener);
     };
   }, [initializeMidi]);
+
+  // Auto-transition from pre-learning to learning when MIDI activity is detected
+  useEffect(() => {
+    if (isPreLearning && hasRecentActivity) {
+      setIsPreLearning(false);
+      // Enable actual learning mode
+      getActiveTab((tabId) => {
+        if (typeof tabId === 'number') {
+          sendTabMessage(tabId, {
+            action: SET_MIDI_LEARNING_ACTION,
+            enabled: true,
+          });
+        }
+      });
+    }
+  }, [isPreLearning, hasRecentActivity]);
 
   const requestPermission = useCallback(
     async (): Promise<void> =>
@@ -229,14 +256,30 @@ export const useMidiController = (): UseMidiControllerReturn => {
     });
   }, []);
 
-  const setLearning = useCallback((enabled: boolean): void => {
-    getActiveTab((tabId) => {
-      if (typeof tabId === 'number') {
-        sendTabMessage(tabId, { action: SET_MIDI_LEARNING_ACTION, enabled });
-        // No need to manually refresh - we'll get real-time update via broadcast
+  const setLearning = useCallback(
+    (enabled: boolean): void => {
+      if (enabled && !hasRecentActivity) {
+        // Enter pre-learning state - show message until MIDI activity
+        setIsPreLearning(true);
+        // But still enable content script learning to detect activity
+      } else if (enabled && hasRecentActivity) {
+        // Clear pre-learning and enable actual learning
+        setIsPreLearning(false);
+      } else if (!enabled) {
+        // Disable both pre-learning and learning
+        setIsPreLearning(false);
       }
-    });
-  }, []);
+
+      // Always send learning state to content script when enabled (even in pre-learning)
+      getActiveTab((tabId) => {
+        if (typeof tabId === 'number') {
+          sendTabMessage(tabId, { action: SET_MIDI_LEARNING_ACTION, enabled });
+          // No need to manually refresh - we'll get real-time update via broadcast
+        }
+      });
+    },
+    [hasRecentActivity]
+  );
 
   // Note: setLinked removed - linked state is now automatic based on active mappings
 
@@ -256,6 +299,7 @@ export const useMidiController = (): UseMidiControllerReturn => {
     lastActivity,
     isLearning,
     isLinked,
+    isPreLearning,
     requestPermission,
     connectToDevice,
     disconnect,

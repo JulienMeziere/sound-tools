@@ -41,6 +41,7 @@ export class ContentScriptManager implements MidiControllerEvents {
               lastActivity: null,
               isLearning: false,
               isLinked: false,
+              hasRecentActivity: false,
             });
           } else {
             const status = this.midiController.getConnectionStatus();
@@ -257,6 +258,9 @@ export class ContentScriptManager implements MidiControllerEvents {
   }
 
   onMidiMappingCreated(_mapping: MidiMapping): void {
+    // Disable learning mode after creating a link
+    this.midiController?.setLearning(false);
+
     // Broadcast status update when a mapping is created (linked state may have changed)
     this.broadcastMidiStatusUpdate();
   }

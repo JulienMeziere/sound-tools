@@ -24,6 +24,7 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
     connectedDeviceName,
     lastActivity,
     isLearning,
+    isPreLearning,
     requestPermission,
     connectToDevice,
     disconnect,
@@ -71,6 +72,7 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
         connectingDeviceId={connectingDeviceId ?? ''}
         lastActivity={lastActivity}
         isLearning={isLearning}
+        isPreLearning={isPreLearning}
         onRequestPermission={handleRequestPermission}
         onDeviceSelect={handleDeviceSelect}
         onDisconnect={handleDisconnect}
@@ -87,6 +89,7 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
       connectingDeviceId,
       lastActivity,
       isLearning,
+      isPreLearning,
       handleRequestPermission,
       handleDeviceSelect,
       handleDisconnect,

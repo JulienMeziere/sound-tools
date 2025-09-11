@@ -40,16 +40,14 @@ const EffectButton: React.FC<EffectButtonProps> = ({
   onMidiLinkRequest,
 }) => {
   const handleClick = useCallback(() => {
-    onToggle(effect);
-  }, [effect, onToggle]);
-
-  const handleRightClick = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
+    if (isLearning) {
+      // In learn mode, request MIDI link instead of toggling
       onMidiLinkRequest();
-    },
-    [onMidiLinkRequest]
-  );
+    } else {
+      // Normal mode, toggle the effect
+      onToggle(effect);
+    }
+  }, [effect, onToggle, isLearning, onMidiLinkRequest]);
 
   const handleMouseOver = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -82,7 +80,6 @@ const EffectButton: React.FC<EffectButtonProps> = ({
   return (
     <button
       onClick={handleClick}
-      onContextMenu={handleRightClick}
       style={buttonStyle}
       className={isLearning ? 'sound-tools-learn-mode' : ''}
       onMouseOver={handleMouseOver}

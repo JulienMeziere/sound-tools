@@ -98,6 +98,7 @@ const EffectRow: React.FC<EffectRowProps> = ({
               max={param.max || 100}
               onChange={(value) => handleParameterChange(param.name, value)}
               onMidiLinkRequest={() => handleSliderClick(param.name)}
+              isLearning={isLearning}
             />
           ))}
         </div>

@@ -44,7 +44,6 @@ export class MidiController {
   private isLearning = false;
   private isLinked = false; // New linked mode
   private readonly midiMappings: Map<string, MidiMapping> = new Map(); // MIDI mapping storage
-  private pendingLinkTarget: string | null = null; // UI element waiting for MIDI link
   private readonly events: MidiControllerEvents;
 
   constructor(events: MidiControllerEvents) {
@@ -59,6 +58,7 @@ export class MidiController {
     lastActivity: MidiActivity | null;
     isLearning: boolean;
     isLinked: boolean;
+    hasRecentActivity: boolean;
   } {
     return {
       isConnected: this.isConnected,
@@ -68,6 +68,7 @@ export class MidiController {
       lastActivity: this.isLearning ? this.lastActivity : null,
       isLearning: this.isLearning,
       isLinked: this.isLinked,
+      hasRecentActivity: this.hasRecentActivity(),
     };
   }
 
@@ -217,7 +218,6 @@ export class MidiController {
     this.isConnected = false;
     this.isLearning = false;
     this.lastActivity = null;
-    this.pendingLinkTarget = null;
     this.midiMappings.clear();
 
     // Update linked state after clearing mappings
@@ -244,8 +244,6 @@ export class MidiController {
     Logger.info('MIDI learning:', enabled ? 'enabled' : 'disabled');
   }
 
-  // Note: setLinked is now handled automatically based on active mappings
-
   private updateMidiListening(): void {
     if (this.isConnected && this.midiAccess && this.connectedDeviceId) {
       const device = this.midiAccess.inputs.get(this.connectedDeviceId);
@@ -264,12 +262,23 @@ export class MidiController {
   }
 
   requestMidiLink(targetId: string): void {
-    this.pendingLinkTarget = targetId;
-    Logger.info('MIDI link requested for:', targetId);
+    if (!this.lastActivity) {
+      Logger.warn(
+        'No MIDI activity available for linking. Please move a MIDI control first.'
+      );
+      return;
+    }
+
+    // Create mapping immediately using lastActivity
+    this.createMidiLinkFromActivity(targetId, this.lastActivity);
   }
 
   getMidiMappings(): MidiMapping[] {
     return Array.from(this.midiMappings.values());
+  }
+
+  hasRecentActivity(): boolean {
+    return this.lastActivity !== null;
   }
 
   private updateLinkedState(): void {
@@ -289,64 +298,48 @@ export class MidiController {
     }
   }
 
-  private handleMidiMessage(event: MIDIMessageEvent): void {
-    const data = Array.from(event.data || []);
-    const [status, data1, data2] = data;
-
-    // Parse MIDI message type and create activity
-    const activity = this.parseMidiMessage(
-      status || 0,
-      data1 || 0,
-      data2 || 0,
-      data
-    );
-
-    // Only process if activity is not null (ignored messages return null)
-    if (activity !== null) {
-      // Handle linking if we have a pending target
-      if (
-        this.pendingLinkTarget &&
-        (activity.type === 'note' || activity.type === 'control')
-      ) {
-        this.createMidiLink(activity, status || 0, data1 || 0);
-        this.pendingLinkTarget = null;
-      }
-
-      // Check for existing mappings and trigger them
-      this.checkMidiMappings(activity, status || 0, data1 || 0, data2 || 0);
-
-      // Store activity and notify listeners (only if learning mode is active)
-      if (this.isLearning) {
-        this.lastActivity = activity;
-        this.events.onMidiActivity(activity);
-        Logger.info('MIDI Activity:', activity);
-      }
-    }
-  }
-
-  private createMidiLink(
-    activity: MidiActivity,
-    status: number,
-    data1: number
+  private createMidiLinkFromActivity(
+    targetId: string,
+    activity: MidiActivity
   ): void {
-    if (!this.pendingLinkTarget) return;
+    if (activity.type !== 'note' && activity.type !== 'control') {
+      Logger.warn('Cannot create MIDI link from activity type:', activity.type);
+      return;
+    }
+
+    // Extract MIDI data from the raw data
+    const [status, data1] = activity.rawData;
+    if (!status || data1 === undefined) {
+      Logger.warn('Invalid MIDI data for linking:', activity.rawData);
+      return;
+    }
 
     const channel = (status & 0x0f) + 1;
 
     // Parse the target ID to determine mapping type
-    const parts = this.pendingLinkTarget.split('-');
-    const [type, effect, parameter] = parts;
+    // Format: "effect-toggle-distortion" or "effect-parameter-reverb-roomSize"
+    const parts = targetId.split('-');
+
+    if (parts.length < 3) {
+      Logger.error('Invalid target ID format:', targetId);
+      return;
+    }
+
+    const [part0, part1, effect, ...remainingParts] = parts;
+    const type = `${part0}-${part1}`; // "effect-toggle" or "effect-parameter"
+    const parameter =
+      remainingParts.length > 0 ? remainingParts.join('-') : undefined; // handle multi-part parameter names
 
     if (!type || !effect) {
-      Logger.error('Invalid target ID format:', this.pendingLinkTarget);
+      Logger.error('Invalid target ID format:', targetId);
       return;
     }
 
     const mapping: MidiMapping = {
-      id: this.pendingLinkTarget,
+      id: targetId,
       type: type as 'effect-toggle' | 'effect-parameter',
       effect,
-      midiType: activity.type as 'note' | 'control',
+      midiType: activity.type,
       midiChannel: channel,
     };
 
@@ -370,10 +363,36 @@ export class MidiController {
     // Update linked state based on active mappings
     this.updateLinkedState();
 
-    Logger.info('MIDI mapping created:', mapping);
+    Logger.info('MIDI mapping created from last activity:', mapping);
 
     // Notify that a mapping was created
     this.events.onMidiMappingCreated(mapping);
+  }
+
+  private handleMidiMessage(event: MIDIMessageEvent): void {
+    const data = Array.from(event.data || []);
+    const [status, data1, data2] = data;
+
+    // Parse MIDI message type and create activity
+    const activity = this.parseMidiMessage(
+      status || 0,
+      data1 || 0,
+      data2 || 0,
+      data
+    );
+
+    // Only process if activity is not null (ignored messages return null)
+    if (activity !== null) {
+      // Check for existing mappings and trigger them
+      this.checkMidiMappings(activity, status || 0, data1 || 0, data2 || 0);
+
+      // Store activity and notify listeners (only if learning mode is active)
+      if (this.isLearning) {
+        this.lastActivity = activity;
+        this.events.onMidiActivity(activity);
+        Logger.info('MIDI Activity:', activity);
+      }
+    }
   }
 
   private checkMidiMappings(
@@ -417,7 +436,17 @@ export class MidiController {
         }
       } else {
         // For controls, scale from 0-127 to 0-100
-        value = Math.round((data2 / 127) * 100);
+        const scaledValue = Math.round((data2 / 127) * 100);
+
+        // For effect toggles, <50% = off, >=50% = on
+        if (mapping.type === 'effect-toggle') {
+          value = scaledValue < 50 ? 0 : 1;
+          Logger.info(
+            `Control toggle: CC=${data2}, scaled=${scaledValue}%, toggle=${value}`
+          );
+        } else {
+          value = scaledValue;
+        }
       }
 
       // Trigger the mapping
