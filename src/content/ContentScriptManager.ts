@@ -404,7 +404,6 @@ export class ContentScriptManager implements MidiControllerEvents {
   private setupUserGestureListener(): void {
     const handleUserGesture = () => {
       if (this.autoRestoreOnUserGesture && !this.autoRestoreAttempted) {
-        Logger.info('User gesture detected, attempting auto-restore');
         void this.attemptAutoRestore();
 
         // Remove listeners after first attempt
@@ -428,13 +427,6 @@ export class ContentScriptManager implements MidiControllerEvents {
     this.autoRestoreAttempted = true;
 
     try {
-      Logger.info(
-        'Attempting auto-restore on page load for URL:',
-        window.location.href
-      );
-      Logger.info('Document ready state:', document.readyState);
-      Logger.info('Is secure context:', window.isSecureContext);
-
       // Initialize MIDI controller for restore attempt
       if (!this.midiController) {
         this.midiController = new MidiController(this);
@@ -451,17 +443,15 @@ export class ContentScriptManager implements MidiControllerEvents {
       if (restored) {
         Logger.info('MIDI state auto-restored successfully');
         this.notificationManager.showSuccess('MIDI Controller Restored!');
-        this.autoRestoreOnUserGesture = false; // Success, no need for fallback
+        this.autoRestoreOnUserGesture = false;
       } else {
-        Logger.info('No MIDI state to restore or restore failed');
         // Check if we should try again on user gesture
         const hasPermission = await MidiStorageManager.getMidiPermission(
           window.location.href
         );
         if (hasPermission === true) {
-          Logger.info('Will attempt auto-restore on next user gesture');
           this.autoRestoreOnUserGesture = true;
-          this.autoRestoreAttempted = false; // Allow retry on user gesture
+          this.autoRestoreAttempted = false;
         }
       }
     } catch (error) {
@@ -472,11 +462,8 @@ export class ContentScriptManager implements MidiControllerEvents {
           window.location.href
         );
         if (hasPermission === true) {
-          Logger.info(
-            'Will attempt auto-restore on next user gesture due to error'
-          );
           this.autoRestoreOnUserGesture = true;
-          this.autoRestoreAttempted = false; // Allow retry on user gesture
+          this.autoRestoreAttempted = false;
         }
       } catch (permissionError) {
         Logger.error(

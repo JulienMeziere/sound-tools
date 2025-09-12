@@ -17,14 +17,14 @@ export interface MidiActivity {
 }
 
 export interface MidiMapping {
-  id: string; // Unique identifier for the UI element
-  type: 'effect-toggle' | 'effect-parameter'; // Type of UI element
-  effect: string; // Effect name (for both toggle and parameter)
-  parameter?: string; // Parameter name (for parameter type only)
-  midiType: 'note' | 'control'; // Type of MIDI message
-  midiChannel: number; // MIDI channel (1-16)
-  midiNote?: number; // Note number (for note type)
-  midiCC?: number; // CC number (for control type)
+  id: string;
+  type: 'effect-toggle' | 'effect-parameter';
+  effect: string;
+  parameter?: string;
+  midiType: 'note' | 'control';
+  midiChannel: number;
+  midiNote?: number;
+  midiCC?: number;
 }
 
 export interface MidiControllerEvents {
@@ -46,8 +46,8 @@ export class MidiController {
   private hasPermission = false;
   private lastActivity: MidiActivity | null = null;
   private isLearning = false;
-  private isLinked = false; // New linked mode
-  private readonly midiMappings: Map<string, MidiMapping[]> = new Map(); // MIDI mapping storage - multiple mappings per MIDI control
+  private isLinked = false;
+  private readonly midiMappings: Map<string, MidiMapping[]> = new Map();
   private readonly events: MidiControllerEvents;
 
   constructor(events: MidiControllerEvents) {
@@ -90,20 +90,12 @@ export class MidiController {
         Logger.warn('Not in secure context, MIDI may not work');
       }
 
-      // Log the current context for debugging
-      Logger.info('Current context:', {
-        isSecureContext: window.isSecureContext,
-        origin: window.location?.origin || 'unknown',
-        protocol: window.location?.protocol || 'unknown',
-      });
-
-      // Check MIDI permission status first (as per MDN documentation)
+      // Check MIDI permission status first
       if ('permissions' in navigator && 'query' in navigator.permissions) {
         try {
           const permissionStatus = await navigator.permissions.query({
             name: 'midi' as PermissionName,
           });
-          Logger.info('MIDI permission status:', permissionStatus.state);
 
           if (permissionStatus.state === 'denied') {
             throw new Error(
@@ -115,14 +107,13 @@ export class MidiController {
             'Could not query MIDI permission status:',
             permissionError
           );
-          // Continue anyway, as some browsers might not support this
         }
       }
 
-      // Request MIDI access with explicit options (following MDN documentation)
+      // Request MIDI access
       this.midiAccess = await navigator.requestMIDIAccess({
-        sysex: false, // Don't request system exclusive access initially
-        software: true, // Include software synthesizers
+        sysex: false,
+        software: true,
       });
 
       this.hasPermission = true;
@@ -218,16 +209,9 @@ export class MidiController {
       // Load existing configuration or create new one
       const existingConfig =
         await MidiStorageManager.loadDeviceConfiguration(deviceId);
-      Logger.info('Device configuration check:', {
-        deviceId,
-        hasExistingConfig: !!existingConfig,
-        mappingsCount: existingConfig?.mappings.length || 0,
-      });
-
       if (!existingConfig) {
         // Create new device configuration with empty mappings
         void MidiStorageManager.saveDeviceConfiguration(deviceInfo, []);
-        Logger.info('Created new device configuration for:', deviceInfo.name);
       } else {
         // Restore existing mappings for this device
         this.restoreMidiMappings(existingConfig.mappings);
@@ -238,10 +222,6 @@ export class MidiController {
       }
 
       Logger.info('MIDI connected successfully to:', this.connectedDeviceName);
-      Logger.info('Connected device details:', {
-        deviceId: this.connectedDeviceId,
-        deviceName: this.connectedDeviceName,
-      });
       this.events.onConnectionChange(
         this.isConnected,
         this.connectedDeviceName
@@ -271,12 +251,6 @@ export class MidiController {
     // Only clear the last active device if explicitly requested (user disconnect)
     if (clearLastActive) {
       void MidiStorageManager.clearLastActiveDevice();
-      Logger.info(
-        'Last active device cleared from storage due to explicit disconnect'
-      );
-      Logger.info('Device configurations preserved for future reconnection');
-    } else {
-      Logger.info('Last active device preserved during cleanup');
     }
 
     // Only clear all device configurations if explicitly requested (rare case)
@@ -290,17 +264,10 @@ export class MidiController {
     // Update linked state after clearing mappings
     this.updateLinkedState();
     const previousDeviceName = this.connectedDeviceName;
-    const previousDeviceId = this.connectedDeviceId;
     this.connectedDeviceId = null;
     this.connectedDeviceName = null;
 
     Logger.info('MIDI disconnected from:', previousDeviceName);
-    Logger.info('Disconnected device details:', {
-      deviceId: previousDeviceId,
-      deviceName: previousDeviceName,
-      clearLastActive,
-      clearAllConfigurations,
-    });
     this.events.onConnectionChange(this.isConnected, '');
   }
 
@@ -724,7 +691,6 @@ export class MidiController {
 
       // Check if we have permission for this domain
       const hasPermission = await MidiStorageManager.getMidiPermission(url);
-      Logger.info('Domain permission check result:', hasPermission);
 
       if (hasPermission !== true) {
         Logger.info('No MIDI permission stored for domain, skipping restore');
@@ -733,15 +699,6 @@ export class MidiController {
 
       // Load saved MIDI state
       const midiState = await MidiStorageManager.loadMidiState();
-      Logger.info('Loaded MIDI state:', {
-        hasDevice: !!midiState.midiDevice,
-        deviceName: midiState.midiDevice?.name,
-        deviceId: midiState.midiDevice?.id,
-        mappingsCount: midiState.midiMappings.length,
-      });
-
-      // Debug: Log full state for troubleshooting
-      Logger.info('Full MIDI state from storage:', midiState);
 
       if (!midiState.midiDevice) {
         Logger.info('No MIDI device saved, skipping restore');

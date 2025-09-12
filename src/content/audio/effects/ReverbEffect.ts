@@ -39,16 +39,12 @@ export class ReverbEffect extends BaseAudioEffect {
   }
 
   private generateImpulseResponseBank(audioContext: AudioContext): void {
-    Logger.info('Generating impulse response bank (20 room sizes)...');
-
     this.impulseResponseBank = [];
 
     for (let i = 0; i < 20; i++) {
-      const roomPercent = i / 19; // 0 to 1 (19 steps for 20 rooms)
-
-      // Room characteristics progression
-      const duration = 0.3 + roomPercent * 3.7; // 0.3s to 4s
-      const decay = 1 + roomPercent * 4; // 1 to 5 (exponential decay)
+      const roomPercent = i / 19;
+      const duration = 0.3 + roomPercent * 3.7;
+      const decay = 1 + roomPercent * 4;
       const reverse = false;
 
       const impulseResponse = this.createImpulseResponse(
@@ -64,10 +60,6 @@ export class ReverbEffect extends BaseAudioEffect {
         Logger.error(`Failed to generate impulse response ${i}`);
       }
     }
-
-    Logger.info(
-      `Generated ${this.impulseResponseBank.length} impulse responses`
-    );
   }
 
   create(audioContext: AudioContext): AudioNode | null {
@@ -218,9 +210,6 @@ export class ReverbEffect extends BaseAudioEffect {
             return;
           }
 
-          Logger.info(
-            `ReverbEffect: Switched to room size ${clampedIndex + 1}/20 (${value}%)`
-          );
           break;
         }
         default:
