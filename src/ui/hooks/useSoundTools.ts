@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 import { Logger } from '../../logger';
+import { popupParameterStore } from '../../ParameterStore/PopupParameterStore';
 
 interface UseSoundToolsReturn {
   enabledEffects: Set<string>;
@@ -17,7 +18,6 @@ const RETRY_DELAY = 1000;
 const EFFECT_STATUS_ACTION = 'getEffectStatus';
 const ENABLE_EFFECT_ACTION = 'enableEffect';
 const DISABLE_EFFECT_ACTION = 'disableEffect';
-const UPDATE_EFFECT_PARAMETER_ACTION = 'updateEffectParameter';
 
 // Helper function to send tab messages
 const sendTabMessage = (
@@ -81,11 +81,28 @@ export const useSoundTools = (): UseSoundToolsReturn => {
     initializePopup();
     retryTimerRef.current = window.setTimeout(initializePopup, RETRY_DELAY);
 
+    // Set up message listener for real-time effect status updates from content script
+    const messageListener = (
+      message: { type?: string; data?: unknown },
+      sender: chrome.runtime.MessageSender
+    ) => {
+      // Only process messages from content scripts
+      if (sender.tab && message.type === 'effectStatusUpdate') {
+        const update = message.data as { enabledEffects?: string[] };
+        if (Array.isArray(update.enabledEffects)) {
+          setEnabledEffects(new Set(update.enabledEffects));
+        }
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(messageListener);
+
     return (): void => {
       if (retryTimerRef.current !== null) {
         clearTimeout(retryTimerRef.current);
         retryTimerRef.current = null;
       }
+      chrome.runtime.onMessage.removeListener(messageListener);
     };
   }, [initializePopup]);
 
@@ -133,16 +150,13 @@ export const useSoundTools = (): UseSoundToolsReturn => {
 
   const updateEffectParameter = useCallback(
     (effect: string, parameter: string, value: number): void => {
-      getActiveTab((tabId) => {
-        if (typeof tabId === 'number') {
-          sendTabMessage(tabId, {
-            action: UPDATE_EFFECT_PARAMETER_ACTION,
-            effect: effect.toLowerCase(),
-            parameter,
-            value,
-          });
-        }
-      });
+      // Use parameter store instead of direct messaging
+      // This handles persistence, validation, and content script communication
+      void popupParameterStore.setParameter(
+        effect.toLowerCase(),
+        parameter,
+        value
+      );
     },
     []
   );

@@ -1,21 +1,45 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { useMidiController } from '../../hooks/useMidiController';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import MidiRow from './MidiRow';
 import { Logger } from '../../../logger';
 
+interface MidiDevice {
+  id: string;
+  name: string;
+}
+
+interface MidiActivity {
+  type: 'note' | 'control' | 'unknown';
+  message: string;
+  timestamp: number;
+  rawData: number[];
+}
+
+interface MidiControllerProps {
+  hasPermission: boolean;
+  availableDevices: MidiDevice[];
+  isConnected: boolean;
+  connectedDeviceName: string;
+  lastActivity: MidiActivity | null;
+  isLearning: boolean;
+  isPreLearning: boolean;
+  requestPermission: () => Promise<void>;
+  connectToDevice: (deviceId: string) => void;
+  disconnect: () => void;
+  setLearning: (enabled: boolean) => void;
+}
+
 interface MidiComponentProps {
   onEffectToggle?: (effectName: string) => void;
+  midiController: MidiControllerProps;
 }
 
 // Constants moved outside component - matching AudioEffects structure
 const GRID_STYLE = { display: 'grid', gap: '10px' } as const;
 
-const MidiComponent: React.FC<MidiComponentProps> = () => {
+const MidiComponent: React.FC<MidiComponentProps> = ({ midiController }) => {
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(
-    null
-  );
+  const connectingDeviceIdRef = useRef<string | null>(null);
 
   const {
     hasPermission,
@@ -29,7 +53,7 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
     connectToDevice,
     disconnect,
     setLearning,
-  } = useMidiController();
+  } = midiController;
 
   const handleRequestPermission = useCallback(async (): Promise<void> => {
     setIsRequestingPermission(true);
@@ -45,12 +69,12 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
   const handleDeviceSelect = useCallback(
     (deviceId: string): void => {
       setIsConnecting(true);
-      setConnectingDeviceId(deviceId);
+      connectingDeviceIdRef.current = deviceId;
       connectToDevice(deviceId);
       // Reset connecting state after a short delay
       setTimeout(() => {
         setIsConnecting(false);
-        setConnectingDeviceId(null);
+        connectingDeviceIdRef.current = null;
       }, 1000);
     },
     [connectToDevice]
@@ -69,7 +93,7 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
         availableDevices={availableDevices}
         isRequesting={isRequestingPermission}
         isConnecting={isConnecting}
-        connectingDeviceId={connectingDeviceId ?? ''}
+        connectingDeviceId={connectingDeviceIdRef.current ?? ''}
         lastActivity={lastActivity}
         isLearning={isLearning}
         isPreLearning={isPreLearning}
@@ -86,7 +110,6 @@ const MidiComponent: React.FC<MidiComponentProps> = () => {
       availableDevices,
       isRequestingPermission,
       isConnecting,
-      connectingDeviceId,
       lastActivity,
       isLearning,
       isPreLearning,

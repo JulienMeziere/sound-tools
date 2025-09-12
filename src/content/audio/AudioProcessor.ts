@@ -1,9 +1,10 @@
+import { Logger } from '../../logger';
+import { ParameterChangeEvent } from '../../ParameterStore/BaseParameterStore';
+import { contentParameterStore } from '../../ParameterStore/ContentParameterStore';
 import { AudioEffect } from './AudioEffect';
 import { DistortionEffect } from './effects/DistortionEffect';
 import { FilterEffect } from './effects/FilterEffect';
 import { ReverbEffect } from './effects/ReverbEffect';
-import { Logger } from '../logger';
-
 export class AudioProcessor {
   private audioContext: AudioContext | null = null;
   private readonly sourceNodes: Map<
@@ -13,15 +14,13 @@ export class AudioProcessor {
   private readonly effectNodes: Map<string, AudioNode> = new Map();
   private readonly enabledEffects: Set<string> = new Set();
   private readonly availableEffects: Map<string, AudioEffect> = new Map();
-  private readonly effectParameters: Map<string, Map<string, number>> =
-    new Map();
 
   // Effect processing order: Distortion > Reverb > Filter
   private static readonly EFFECT_ORDER = ['distortion', 'reverb', 'filter'];
 
   constructor() {
     this.initializeEffects();
-    this.initializeDefaultParameters();
+    void this.initializeParameterStore();
   }
 
   private initializeEffects(): void {
@@ -36,32 +35,30 @@ export class AudioProcessor {
     });
   }
 
-  private initializeDefaultParameters(): void {
-    // Initialize default parameter values that match UI defaults
-    this.effectParameters.set('distortion', new Map([['amount', 30]]));
-    this.effectParameters.set(
-      'reverb',
-      new Map([
-        ['roomSize', 50],
-        ['mix', 30], // 30% wet by default
-      ])
-    );
-    this.effectParameters.set(
-      'filter',
-      new Map([
-        ['highPassFreq', 20], // 20Hz default for high-pass
-        ['highPassQ', 10], // Default Q for high-pass
-        ['lowPassFreq', 80], // 20kHz default for low-pass
-        ['lowPassQ', 10], // Default Q for low-pass
-      ])
+  private async initializeParameterStore(): Promise<void> {
+    // Initialize the parameter store
+    await contentParameterStore.initialize();
+
+    // Listen for parameter changes
+    contentParameterStore.addParameterChangeListener(
+      this.handleParameterChange
     );
   }
+
+  // ParameterStoreListener implementation
+  public handleParameterChange = (event: ParameterChangeEvent): void => {
+    this.applyParameterToEffect(
+      event.effectName,
+      event.parameterName,
+      event.value
+    );
+  };
 
   getEnabledEffects(): Set<string> {
     return new Set(this.enabledEffects);
   }
 
-  enableEffect(effectName: string): void {
+  enableEffect(effectName: string): boolean {
     if (
       this.availableEffects.has(effectName) &&
       !this.enabledEffects.has(effectName)
@@ -69,14 +66,18 @@ export class AudioProcessor {
       this.enabledEffects.add(effectName);
       this.setupAudioProcessing();
       this.rebuildAudioChain();
+      return true; // State changed
     }
+    return false; // State didn't change
   }
 
-  disableEffect(effectName: string): void {
+  disableEffect(effectName: string): boolean {
     if (this.enabledEffects.has(effectName)) {
       this.enabledEffects.delete(effectName);
       this.rebuildAudioChain();
+      return true; // State changed
     }
+    return false; // State didn't change
   }
 
   updateEffectParameter(
@@ -84,18 +85,21 @@ export class AudioProcessor {
     parameterName: string,
     value: number
   ): void {
-    // Store the parameter value
-    if (!this.effectParameters.has(effectName)) {
-      this.effectParameters.set(effectName, new Map());
-    }
-    this.effectParameters.get(effectName)?.set(parameterName, value);
+    // Store in parameter store (this will trigger handleParameterChange)
+    void contentParameterStore.setParameter(effectName, parameterName, value);
+  }
 
-    // Apply to current effect node if it exists
+  // Apply parameter to effect if it exists and is enabled
+  private applyParameterToEffect(
+    effectName: string,
+    parameterName: string,
+    value: number
+  ): void {
     const effectNode = this.effectNodes.get(effectName);
     const effect = this.availableEffects.get(effectName);
 
     if (!effectNode || !effect) {
-      Logger.error(`Effect '${effectName}' not found or not enabled`);
+      // Effect not enabled, parameter is already stored in ParameterStore
       return;
     }
 
@@ -107,12 +111,11 @@ export class AudioProcessor {
     effectNode: AudioNode,
     effect: AudioEffect
   ): void {
-    const storedParams = this.effectParameters.get(effectName);
-    if (storedParams) {
-      storedParams.forEach((value, paramName) => {
-        effect.updateParameter(effectNode, paramName, value);
-      });
-    }
+    // Get parameters from ContentParameterStore
+    const storedParams = contentParameterStore.getEffectParameters(effectName);
+    storedParams.forEach((value, paramName) => {
+      effect.updateParameter(effectNode, paramName, value);
+    });
   }
 
   private setupAudioProcessing(): void {
@@ -215,5 +218,38 @@ export class AudioProcessor {
     audioElements.forEach((element) => {
       this.setupMediaElement(element as HTMLMediaElement);
     });
+  }
+
+  // Cleanup method to properly dispose of audio resources
+  cleanup(): void {
+    // Remove parameter store listener
+    contentParameterStore.removeParameterChangeListener(
+      this.handleParameterChange
+    );
+
+    // Disconnect all audio nodes
+    this.sourceNodes.forEach((sourceNode) => {
+      sourceNode.disconnect();
+    });
+
+    this.effectNodes.forEach((effectNode) => {
+      effectNode.disconnect();
+    });
+
+    // Clear all maps and sets
+    this.sourceNodes.clear();
+    this.effectNodes.clear();
+    this.enabledEffects.clear();
+
+    // Close AudioContext to free resources
+    if (this.audioContext) {
+      // AudioContext.close() is async but we don't need to wait
+      this.audioContext.close().catch((error) => {
+        Logger.warn('Error closing AudioContext:', error);
+      });
+      this.audioContext = null;
+    }
+
+    Logger.info('AudioProcessor cleanup completed');
   }
 }

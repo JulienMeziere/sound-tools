@@ -1,5 +1,5 @@
 import { BaseAudioEffect } from '../AudioEffect';
-import { Logger } from '../../logger';
+import { Logger } from '../../../logger';
 
 export class ReverbEffect extends BaseAudioEffect {
   private impulseResponseBank: AudioBuffer[] = [];

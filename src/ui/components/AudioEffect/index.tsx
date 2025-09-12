@@ -1,6 +1,7 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 
 import EffectRow from './EffectRow';
+import { popupParameterStore } from '../../../ParameterStore/PopupParameterStore';
 
 interface AudioEffectsProps {
   enabledEffects: Set<string>;
@@ -14,8 +15,7 @@ interface AudioEffectsProps {
   onRequestMidiLink: (targetId: string) => void;
 }
 
-// Constants moved outside component - Order: Distortion > Reverb > Filter
-const EFFECTS = ['Distortion', 'Reverb', 'Filter'] as const;
+// Grid style constant
 const GRID_STYLE = { display: 'grid', gap: '10px' } as const;
 
 const AudioEffects: React.FC<AudioEffectsProps> = ({
@@ -27,124 +27,107 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
 }) => {
   const [sliderValues, setSliderValues] = useState<
     Record<string, Record<string, number>>
-  >({
-    distortion: {
-      amount: 30,
-    },
-    reverb: {
-      roomSize: 50,
-      mix: 30, // Mix default
-    },
-    filter: {
-      highPassFreq: 20, // High-pass frequency default
-      highPassQ: 10, // High-pass Q default
-      lowPassFreq: 80, // Low-pass frequency default
-      lowPassQ: 10, // Low-pass Q default
-    },
-  });
+  >({});
+  const [isStoreInitialized, setIsStoreInitialized] = useState(false);
+
+  // Initialize parameter store and sync with UI
+  useEffect(() => {
+    const initializeStore = async () => {
+      await popupParameterStore.initialize();
+
+      // Get current parameters from store
+      const currentParams = popupParameterStore.getAllParametersAsObject();
+      setSliderValues(currentParams);
+      setIsStoreInitialized(true);
+
+      // Listen for parameter updates
+      const handleUIUpdate = () => {
+        const updatedParams = popupParameterStore.getAllParametersAsObject();
+        setSliderValues(updatedParams);
+      };
+
+      popupParameterStore.addUIUpdateListener(handleUIUpdate);
+
+      // Cleanup listener on unmount
+      return () => {
+        popupParameterStore.removeUIUpdateListener(handleUIUpdate);
+      };
+    };
+
+    void initializeStore();
+  }, []);
 
   const handleParameterChange = useCallback(
     (effect: string, parameter: string, value: number) => {
-      setSliderValues((prev) => ({
-        ...prev,
-        [effect]: {
-          ...prev[effect],
-          [parameter]: value,
-        },
-      }));
-
+      // Update via parameter store (this will handle persistence and content script communication)
+      void popupParameterStore.setParameter(effect, parameter, value);
       onUpdateEffectParameter(effect, parameter, value);
     },
     [onUpdateEffectParameter]
   );
 
-  // Define parameters for each effect
+  // Get parameters for each effect from parameter store definitions
   const getEffectParameters = useCallback(
     (effect: string) => {
       const effectLower = effect.toLowerCase();
       const effectValues = sliderValues[effectLower] || {};
 
-      switch (effectLower) {
-        case 'distortion':
-          return [
-            {
-              name: 'amount',
-              label: 'Distortion Amount',
-              value: effectValues['amount'] || 30,
-            },
-          ];
-        case 'reverb':
-          return [
-            {
-              name: 'roomSize',
-              label: 'Room Size',
-              value: effectValues['roomSize'] || 50,
-            },
-            {
-              name: 'mix',
-              label: 'Reverb Mix',
-              value: effectValues['mix'] || 30,
-            },
-          ];
-        case 'filter':
-          return [
-            {
-              name: 'highPassFreq',
-              label: 'High-Pass Frequency',
-              value: effectValues['highPassFreq'] || 20,
-            },
-            {
-              name: 'highPassQ',
-              label: 'High-Pass Resonance (Q)',
-              value: effectValues['highPassQ'] || 10,
-            },
-            {
-              name: 'lowPassFreq',
-              label: 'Low-Pass Frequency',
-              value: effectValues['lowPassFreq'] || 80,
-            },
-            {
-              name: 'lowPassQ',
-              label: 'Low-Pass Resonance (Q)',
-              value: effectValues['lowPassQ'] || 10,
-            },
-          ];
-        default:
-          return [];
+      // Get effect definition from parameter store
+      const effectDefinition =
+        popupParameterStore.getEffectDefinition(effectLower);
+      if (!effectDefinition) {
+        return [];
       }
+
+      // Map parameter definitions to UI format
+      return effectDefinition.parameters.map((paramDef) => ({
+        name: paramDef.name,
+        label: paramDef.label,
+        value: effectValues[paramDef.name] ?? paramDef.defaultValue,
+        min: paramDef.min,
+        max: paramDef.max,
+        step: paramDef.step,
+        unit: paramDef.unit,
+      }));
     },
     [sliderValues]
   );
 
-  const effectRows = useMemo(
-    () =>
-      EFFECTS.map((effect) => {
-        const effectLower = effect.toLowerCase();
-        const isEnabled = enabledEffects.has(effectLower);
-        const parameters = getEffectParameters(effect);
+  const effectRows = useMemo(() => {
+    if (!isStoreInitialized) {
+      return null; // Don't render until store is initialized
+    }
 
-        return (
-          <EffectRow
-            key={effect}
-            effect={effect}
-            isEnabled={isEnabled}
-            onToggle={onToggleEffect}
-            parameters={parameters}
-            onParameterChange={handleParameterChange}
-            isLearning={isLearning}
-            onRequestMidiLink={onRequestMidiLink}
-          />
-        );
-      }),
-    [
-      enabledEffects,
-      onToggleEffect,
-      getEffectParameters,
-      handleParameterChange,
-      isLearning,
-      onRequestMidiLink,
-    ]
-  );
+    // Get effects from parameter store definitions
+    const effectDefinitions = popupParameterStore.getAllEffectDefinitions();
+
+    return effectDefinitions.map((effectDef) => {
+      const effectLower = effectDef.name.toLowerCase();
+      const isEnabled = enabledEffects.has(effectLower);
+      const parameters = getEffectParameters(effectDef.name);
+
+      return (
+        <EffectRow
+          key={effectDef.name}
+          effect={effectDef.label}
+          isEnabled={isEnabled}
+          onToggle={onToggleEffect}
+          parameters={parameters}
+          onParameterChange={handleParameterChange}
+          isLearning={isLearning}
+          onRequestMidiLink={onRequestMidiLink}
+        />
+      );
+    });
+  }, [
+    isStoreInitialized,
+    enabledEffects,
+    onToggleEffect,
+    getEffectParameters,
+    handleParameterChange,
+    isLearning,
+    onRequestMidiLink,
+  ]);
 
   return (
     <div>

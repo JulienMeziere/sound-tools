@@ -1,17 +1,18 @@
-import { AudioProcessor } from '../audio/AudioProcessor';
 import { Logger } from '../logger';
 import {
   MidiController,
   type MidiControllerEvents,
   type MidiDevice,
 } from '../midi/MidiController';
-import { NotificationManager } from '../notifications/NotificationManager';
+import { NotificationManager } from './notifications/NotificationManager';
 import { MidiActivity, MidiMapping } from '../midi/MidiController';
+import { AudioProcessor } from './audio/AudioProcessor';
 
 export class ContentScriptManager implements MidiControllerEvents {
   private readonly audioProcessor: AudioProcessor;
   private midiController: MidiController | null = null;
   private readonly notificationManager: NotificationManager;
+  private mutationObserver: MutationObserver | null = null;
 
   constructor() {
     Logger.info('Content script loaded');
@@ -102,22 +103,13 @@ export class ContentScriptManager implements MidiControllerEvents {
           this.disableEffect(request.effect);
           sendResponse({ success: true });
           break;
-
-        case 'updateEffectParameter':
-          this.audioProcessor.updateEffectParameter(
-            request.effect,
-            request.parameter,
-            request.value
-          );
-          sendResponse({ success: true });
-          break;
       }
       return true;
     });
   }
 
   private setupDynamicContentObserver(): void {
-    const observer = new MutationObserver((mutations) => {
+    this.mutationObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType === Node.ELEMENT_NODE) {
@@ -131,7 +123,7 @@ export class ContentScriptManager implements MidiControllerEvents {
       });
     });
 
-    observer.observe(document.body, {
+    this.mutationObserver.observe(document.body, {
       childList: true,
       subtree: true,
     });
@@ -184,19 +176,29 @@ export class ContentScriptManager implements MidiControllerEvents {
   }
 
   private enableEffect(effectName: string): void {
-    Logger.info(`Enabling effect: ${effectName}`);
-    this.audioProcessor.enableEffect(effectName);
-    this.notificationManager.showSuccess(
-      `${effectName.charAt(0).toUpperCase() + effectName.slice(1)} enabled`
-    );
+    Logger.info(`Attempting to enable effect: ${effectName}`);
+    const stateChanged = this.audioProcessor.enableEffect(effectName);
+
+    if (stateChanged) {
+      this.notificationManager.showSuccess(
+        `${effectName.charAt(0).toUpperCase() + effectName.slice(1)} enabled`
+      );
+      // Broadcast effect status change to popup
+      this.broadcastEffectStatusUpdate();
+    }
   }
 
   private disableEffect(effectName: string): void {
-    Logger.info(`Disabling effect: ${effectName}`);
-    this.audioProcessor.disableEffect(effectName);
-    this.notificationManager.showInfo(
-      `${effectName.charAt(0).toUpperCase() + effectName.slice(1)} disabled`
-    );
+    Logger.info(`Attempting to disable effect: ${effectName}`);
+    const stateChanged = this.audioProcessor.disableEffect(effectName);
+
+    if (stateChanged) {
+      this.notificationManager.showInfo(
+        `${effectName.charAt(0).toUpperCase() + effectName.slice(1)} disabled`
+      );
+      // Broadcast effect status change to popup
+      this.broadcastEffectStatusUpdate();
+    }
   }
 
   // MidiControllerEvents implementation
@@ -253,6 +255,8 @@ export class ContentScriptManager implements MidiControllerEvents {
           mapping.parameter,
           value
         );
+        // Broadcast parameter change to popup
+        this.broadcastParameterUpdate(mapping.effect, mapping.parameter, value);
       }
     }
   }
@@ -279,5 +283,54 @@ export class ContentScriptManager implements MidiControllerEvents {
       .catch(() => {
         // Ignore errors if no popup is open
       });
+  }
+
+  private broadcastEffectStatusUpdate(): void {
+    const enabledEffects = Array.from(this.audioProcessor.getEnabledEffects());
+
+    // Send update to all extension contexts (popups, etc.)
+    chrome.runtime
+      .sendMessage({
+        type: 'effectStatusUpdate',
+        data: { enabledEffects },
+      })
+      .catch(() => {
+        // Ignore errors if no popup is open
+      });
+  }
+
+  private broadcastParameterUpdate(
+    effectName: string,
+    parameterName: string,
+    value: number
+  ): void {
+    // Send parameter update to all extension contexts (popups, etc.)
+    chrome.runtime
+      .sendMessage({
+        type: 'parameterUpdate',
+        data: { effectName, parameterName, value },
+      })
+      .catch(() => {
+        // Ignore errors if no popup is open
+      });
+  }
+
+  // Cleanup method to properly dispose of resources
+  public cleanup(): void {
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
+
+    if (this.midiController) {
+      this.midiController.disconnect();
+      this.midiController = null;
+    }
+
+    // Cleanup audio resources
+    this.audioProcessor.cleanup();
+
+    // Cleanup notification resources
+    this.notificationManager.cleanup();
   }
 }

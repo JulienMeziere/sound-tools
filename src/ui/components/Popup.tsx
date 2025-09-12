@@ -13,12 +13,16 @@ const CONTAINER_STYLE = { padding: '20px' } as const;
 const Popup: React.FC = () => {
   const { enabledEffects, toggleEffect, updateEffectParameter } =
     useSoundTools();
-  const { isLearning, isPreLearning, requestMidiLink } = useMidiController();
+  const midiController = useMidiController();
+  const { isLearning, isPreLearning, requestMidiLink } = midiController;
 
   return (
     <div style={CONTAINER_STYLE}>
       <Header />
-      <MidiController onEffectToggle={toggleEffect} />
+      <MidiController
+        onEffectToggle={toggleEffect}
+        midiController={midiController}
+      />
       <AudioEffects
         enabledEffects={enabledEffects}
         onToggleEffect={toggleEffect}
