@@ -84,8 +84,37 @@ export class ContentScriptManager implements MidiControllerEvents {
             this.midiController.requestMidiLink(request.targetId);
             // Send real-time update to popup after requesting link
             this.broadcastMidiStatusUpdate();
+            // Also broadcast mappings update
+            this.broadcastMidiMappingsUpdate();
           }
           sendResponse({ success: true });
+          break;
+
+        case 'removeSpecificMidiLink':
+          if (this.midiController) {
+            const { midiType, midiChannel, midiValue } = request;
+            const success = this.midiController.removeSpecificMapping(
+              midiType,
+              midiChannel,
+              midiValue
+            );
+            // Send real-time update to popup after removing link
+            this.broadcastMidiStatusUpdate();
+            // Also broadcast mappings update
+            this.broadcastMidiMappingsUpdate();
+            sendResponse({ success });
+          } else {
+            sendResponse({ success: false });
+          }
+          break;
+
+        case 'getMidiMappings':
+          if (this.midiController) {
+            const mappings = this.midiController.getMidiMappings();
+            sendResponse({ mappings });
+          } else {
+            sendResponse({ mappings: [] });
+          }
           break;
 
         case 'getEffectStatus':
@@ -279,6 +308,22 @@ export class ContentScriptManager implements MidiControllerEvents {
       .sendMessage({
         type: 'midiStatusUpdate',
         data: status,
+      })
+      .catch(() => {
+        // Ignore errors if no popup is open
+      });
+  }
+
+  private broadcastMidiMappingsUpdate(): void {
+    if (!this.midiController) return;
+
+    const mappings = this.midiController.getMidiMappings();
+
+    // Send update to all extension contexts (popups, etc.)
+    chrome.runtime
+      .sendMessage({
+        type: 'midiMappingsUpdate',
+        data: { mappings },
       })
       .catch(() => {
         // Ignore errors if no popup is open

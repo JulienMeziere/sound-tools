@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Logger } from '../../logger';
+import { MidiMapping } from '../../midi/MidiController';
 
 interface MidiDevice {
   id: string;
@@ -27,6 +28,12 @@ interface UseMidiControllerReturn {
   disconnect: () => void;
   setLearning: (enabled: boolean) => void;
   requestMidiLink: (targetId: string) => void;
+  getMidiMappings: () => Promise<MidiMapping[]>;
+  removeSpecificMidiLink: (
+    midiType: 'note' | 'control',
+    midiChannel: number,
+    midiValue: number
+  ) => Promise<boolean>;
 }
 
 // Constants
@@ -291,6 +298,69 @@ export const useMidiController = (): UseMidiControllerReturn => {
     });
   }, []);
 
+  const getMidiMappings = useCallback(
+    (): Promise<MidiMapping[]> =>
+      new Promise((resolve) => {
+        getActiveTab((tabId) => {
+          if (typeof tabId === 'number') {
+            sendTabMessage(tabId, { action: 'getMidiMappings' }, (response) => {
+              if (chrome.runtime.lastError) {
+                Logger.error(
+                  'Error getting MIDI mappings:',
+                  chrome.runtime.lastError.message
+                );
+                resolve([]);
+                return;
+              }
+              resolve(
+                (response as { mappings?: MidiMapping[] })?.mappings || []
+              );
+            });
+          } else {
+            resolve([]);
+          }
+        });
+      }),
+    []
+  );
+
+  const removeSpecificMidiLink = useCallback(
+    (
+      midiType: 'note' | 'control',
+      midiChannel: number,
+      midiValue: number
+    ): Promise<boolean> =>
+      new Promise((resolve) => {
+        getActiveTab((tabId) => {
+          if (typeof tabId === 'number') {
+            sendTabMessage(
+              tabId,
+              {
+                action: 'removeSpecificMidiLink',
+                midiType,
+                midiChannel,
+                midiValue,
+              },
+              (response) => {
+                if (chrome.runtime.lastError) {
+                  Logger.error(
+                    'Error removing specific MIDI link:',
+                    chrome.runtime.lastError.message
+                  );
+                  resolve(false);
+                  return;
+                }
+                resolve((response as { success?: boolean })?.success === true);
+              }
+            );
+          } else {
+            resolve(false);
+          }
+        });
+      }),
+    []
+  );
+
   return {
     hasPermission,
     availableDevices,
@@ -305,5 +375,7 @@ export const useMidiController = (): UseMidiControllerReturn => {
     disconnect,
     setLearning,
     requestMidiLink,
+    getMidiMappings,
+    removeSpecificMidiLink,
   };
 };

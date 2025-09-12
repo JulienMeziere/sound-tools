@@ -3,6 +3,17 @@ import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import EffectRow from './EffectRow';
 import { popupParameterStore } from '../../../ParameterStore/PopupParameterStore';
 
+interface MidiMapping {
+  id: string;
+  type: 'effect-toggle' | 'effect-parameter';
+  effect: string;
+  parameter?: string;
+  midiType: 'note' | 'control';
+  midiChannel: number;
+  midiNote?: number;
+  midiCC?: number;
+}
+
 interface AudioEffectsProps {
   enabledEffects: Set<string>;
   onToggleEffect: (effect: string) => void;
@@ -13,6 +24,13 @@ interface AudioEffectsProps {
   ) => void;
   isLearning: boolean;
   onRequestMidiLink: (targetId: string) => void;
+  getMidiMappings: () => Promise<MidiMapping[]>;
+  removeSpecificMidiLink: (
+    midiType: 'note' | 'control',
+    midiChannel: number,
+    midiValue: number
+  ) => Promise<boolean>;
+  isLinked: boolean;
 }
 
 // Grid style constant
@@ -24,6 +42,9 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
   onUpdateEffectParameter,
   isLearning,
   onRequestMidiLink,
+  getMidiMappings,
+  removeSpecificMidiLink,
+  isLinked,
 }) => {
   const [sliderValues, setSliderValues] = useState<
     Record<string, Record<string, number>>
@@ -116,6 +137,9 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
           onParameterChange={handleParameterChange}
           isLearning={isLearning}
           onRequestMidiLink={onRequestMidiLink}
+          getMidiMappings={getMidiMappings}
+          removeSpecificMidiLink={removeSpecificMidiLink}
+          isLinked={isLinked}
         />
       );
     });
@@ -127,6 +151,9 @@ const AudioEffects: React.FC<AudioEffectsProps> = ({
     handleParameterChange,
     isLearning,
     onRequestMidiLink,
+    getMidiMappings,
+    removeSpecificMidiLink,
+    isLinked,
   ]);
 
   return (

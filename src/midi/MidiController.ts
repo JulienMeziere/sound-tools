@@ -43,7 +43,7 @@ export class MidiController {
   private lastActivity: MidiActivity | null = null;
   private isLearning = false;
   private isLinked = false; // New linked mode
-  private readonly midiMappings: Map<string, MidiMapping> = new Map(); // MIDI mapping storage
+  private readonly midiMappings: Map<string, MidiMapping[]> = new Map(); // MIDI mapping storage - multiple mappings per MIDI control
   private readonly events: MidiControllerEvents;
 
   constructor(events: MidiControllerEvents) {
@@ -274,7 +274,35 @@ export class MidiController {
   }
 
   getMidiMappings(): MidiMapping[] {
-    return Array.from(this.midiMappings.values());
+    const allMappings: MidiMapping[] = [];
+    for (const mappingArray of this.midiMappings.values()) {
+      allMappings.push(...mappingArray);
+    }
+    return allMappings;
+  }
+
+  // Remove a specific MIDI mapping by MIDI key
+  removeSpecificMapping(
+    midiType: 'note' | 'control',
+    midiChannel: number,
+    midiValue: number
+  ): boolean {
+    const midiKey = this.getMidiKey(midiType, midiChannel, midiValue);
+    const mappingArray = this.midiMappings.get(midiKey);
+
+    if (mappingArray && mappingArray.length > 0) {
+      // Remove the first mapping (or we could make this more specific)
+      const removedMapping = mappingArray.shift();
+
+      if (mappingArray.length === 0) {
+        this.midiMappings.delete(midiKey);
+      }
+
+      this.updateLinkedState();
+      Logger.info('Specific MIDI mapping removed:', removedMapping);
+      return true;
+    }
+    return false;
   }
 
   hasRecentActivity(): boolean {
@@ -357,8 +385,10 @@ export class MidiController {
     // Create a unique key for this MIDI input
     const midiKey = this.getMidiKey(mapping.midiType, channel, data1);
 
-    // Store the mapping
-    this.midiMappings.set(midiKey, mapping);
+    // Store the mapping - add to array or create new array
+    const existingMappings = this.midiMappings.get(midiKey) || [];
+    existingMappings.push(mapping);
+    this.midiMappings.set(midiKey, existingMappings);
 
     // Update linked state based on active mappings
     this.updateLinkedState();
@@ -408,49 +438,52 @@ export class MidiController {
       data1
     );
 
-    const mapping = this.midiMappings.get(midiKey);
-    if (mapping) {
-      // Skip note off messages for note mappings
-      if (mapping.midiType === 'note' && (status & 0xf0) === 0x80) {
-        return;
-      }
-
-      // Skip note on with velocity 0 (which is note off)
-      if (
-        mapping.midiType === 'note' &&
-        (status & 0xf0) === 0x90 &&
-        data2 === 0
-      ) {
-        return;
-      }
-
-      // Calculate the value based on MIDI message type
-      let value: number;
-      if (mapping.midiType === 'note') {
-        // For notes, use velocity (0-127) and scale to 0-100
-        value = Math.round((data2 / 127) * 100);
-
-        // For effect toggles, bottom half = off, upper half = on
-        if (mapping.type === 'effect-toggle') {
-          value = data2 < 64 ? 0 : 1;
+    const mappingArray = this.midiMappings.get(midiKey);
+    if (mappingArray && mappingArray.length > 0) {
+      // Process all mappings for this MIDI control
+      for (const mapping of mappingArray) {
+        // Skip note off messages for note mappings
+        if (mapping.midiType === 'note' && (status & 0xf0) === 0x80) {
+          continue;
         }
-      } else {
-        // For controls, scale from 0-127 to 0-100
-        const scaledValue = Math.round((data2 / 127) * 100);
 
-        // For effect toggles, <50% = off, >=50% = on
-        if (mapping.type === 'effect-toggle') {
-          value = scaledValue < 50 ? 0 : 1;
-          Logger.info(
-            `Control toggle: CC=${data2}, scaled=${scaledValue}%, toggle=${value}`
-          );
+        // Skip note on with velocity 0 (which is note off)
+        if (
+          mapping.midiType === 'note' &&
+          (status & 0xf0) === 0x90 &&
+          data2 === 0
+        ) {
+          continue;
+        }
+
+        // Calculate the value based on MIDI message type
+        let value: number;
+        if (mapping.midiType === 'note') {
+          // For notes, use velocity (0-127) and scale to 0-100
+          value = Math.round((data2 / 127) * 100);
+
+          // For effect toggles, bottom half = off, upper half = on
+          if (mapping.type === 'effect-toggle') {
+            value = data2 < 64 ? 0 : 1;
+          }
         } else {
-          value = scaledValue;
-        }
-      }
+          // For controls, scale from 0-127 to 0-100
+          const scaledValue = Math.round((data2 / 127) * 100);
 
-      // Trigger the mapping
-      this.events.onMidiMappingTriggered(mapping, value);
+          // For effect toggles, <50% = off, >=50% = on
+          if (mapping.type === 'effect-toggle') {
+            value = scaledValue < 50 ? 0 : 1;
+            Logger.info(
+              `Control toggle: CC=${data2}, scaled=${scaledValue}%, toggle=${value}`
+            );
+          } else {
+            value = scaledValue;
+          }
+        }
+
+        // Trigger the mapping
+        this.events.onMidiMappingTriggered(mapping, value);
+      }
     }
   }
 

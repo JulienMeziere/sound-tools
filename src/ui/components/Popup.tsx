@@ -14,7 +14,14 @@ const Popup: React.FC = () => {
   const { enabledEffects, toggleEffect, updateEffectParameter } =
     useSoundTools();
   const midiController = useMidiController();
-  const { isLearning, isPreLearning, requestMidiLink } = midiController;
+  const {
+    isLearning,
+    isPreLearning,
+    isLinked,
+    requestMidiLink,
+    getMidiMappings,
+    removeSpecificMidiLink,
+  } = midiController;
 
   return (
     <div style={CONTAINER_STYLE}>
@@ -29,6 +36,9 @@ const Popup: React.FC = () => {
         onUpdateEffectParameter={updateEffectParameter}
         isLearning={isLearning && !isPreLearning}
         onRequestMidiLink={requestMidiLink}
+        getMidiMappings={getMidiMappings}
+        removeSpecificMidiLink={removeSpecificMidiLink}
+        isLinked={isLinked}
       />
     </div>
   );
