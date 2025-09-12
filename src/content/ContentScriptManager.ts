@@ -7,12 +7,15 @@ import {
 import { NotificationManager } from './notifications/NotificationManager';
 import { MidiActivity, MidiMapping } from '../midi/MidiController';
 import { AudioProcessor } from './audio/AudioProcessor';
+import { MidiStorageManager } from '../storage/MidiStorageManager';
 
 export class ContentScriptManager implements MidiControllerEvents {
   private readonly audioProcessor: AudioProcessor;
   private midiController: MidiController | null = null;
   private readonly notificationManager: NotificationManager;
   private mutationObserver: MutationObserver | null = null;
+  private autoRestoreAttempted = false;
+  private autoRestoreOnUserGesture = false;
 
   constructor() {
     Logger.info('Content script loaded');
@@ -27,6 +30,18 @@ export class ContentScriptManager implements MidiControllerEvents {
   private init(): void {
     this.setupMessageListener();
     this.setupDynamicContentObserver();
+    this.setupUserGestureListener();
+
+    // Attempt to auto-restore MIDI state on page load
+    // Wait for page to be ready before attempting restore
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        void this.attemptAutoRestore();
+      });
+    } else {
+      // Page is already loaded
+      void this.attemptAutoRestore();
+    }
   }
 
   private setupMessageListener(): void {
@@ -58,7 +73,7 @@ export class ContentScriptManager implements MidiControllerEvents {
 
         case 'connectToMidiDevice':
           if (this.midiController) {
-            this.connectToMidiDevice(request.deviceId);
+            void this.connectToMidiDevice(request.deviceId);
           }
           sendResponse({ success: true });
           break;
@@ -168,11 +183,17 @@ export class ContentScriptManager implements MidiControllerEvents {
       }
 
       // Request permission and check the result
-      const permissionGranted =
-        await this.midiController.requestMidiPermission();
+      const permissionGranted = await this.midiController.requestMidiPermission(
+        window.location.href
+      );
 
       if (permissionGranted) {
         this.notificationManager.showSuccess('MIDI Permission Granted!');
+
+        // Auto-restore after manual permission grant
+        void this.midiController.autoRestoreAfterPermissionGrant(
+          window.location.href
+        );
       } else {
         this.notificationManager.showError('MIDI Permission Denied');
       }
@@ -183,12 +204,12 @@ export class ContentScriptManager implements MidiControllerEvents {
     }
   }
 
-  private connectToMidiDevice(deviceId: string): void {
+  private async connectToMidiDevice(deviceId: string): Promise<void> {
     try {
       if (!this.midiController) {
         throw new Error('MIDI controller not initialized');
       }
-      this.midiController.connectToDevice(deviceId);
+      await this.midiController.connectToDevice(deviceId);
       this.notificationManager.showSuccess('MIDI Device Connected!');
     } catch (error) {
       this.notificationManager.showError(
@@ -199,7 +220,7 @@ export class ContentScriptManager implements MidiControllerEvents {
 
   private disconnectMidi(): void {
     if (this.midiController) {
-      this.midiController.disconnect();
+      this.midiController.disconnect(true, false); // Clear last active on explicit disconnect
       this.notificationManager.showInfo('MIDI Device Disconnected');
     }
   }
@@ -368,7 +389,7 @@ export class ContentScriptManager implements MidiControllerEvents {
     }
 
     if (this.midiController) {
-      this.midiController.disconnect();
+      this.midiController.disconnect(false, false); // Don't clear anything on cleanup
       this.midiController = null;
     }
 
@@ -377,5 +398,92 @@ export class ContentScriptManager implements MidiControllerEvents {
 
     // Cleanup notification resources
     this.notificationManager.cleanup();
+  }
+
+  // Setup user gesture listener for fallback auto-restore
+  private setupUserGestureListener(): void {
+    const handleUserGesture = () => {
+      if (this.autoRestoreOnUserGesture && !this.autoRestoreAttempted) {
+        Logger.info('User gesture detected, attempting auto-restore');
+        void this.attemptAutoRestore();
+
+        // Remove listeners after first attempt
+        document.removeEventListener('click', handleUserGesture);
+        document.removeEventListener('keydown', handleUserGesture);
+        document.removeEventListener('touchstart', handleUserGesture);
+      }
+    };
+
+    document.addEventListener('click', handleUserGesture, { once: true });
+    document.addEventListener('keydown', handleUserGesture, { once: true });
+    document.addEventListener('touchstart', handleUserGesture, { once: true });
+  }
+
+  // Attempt to auto-restore MIDI state on page load
+  private async attemptAutoRestore(): Promise<void> {
+    if (this.autoRestoreAttempted) {
+      return;
+    }
+
+    this.autoRestoreAttempted = true;
+
+    try {
+      Logger.info(
+        'Attempting auto-restore on page load for URL:',
+        window.location.href
+      );
+      Logger.info('Document ready state:', document.readyState);
+      Logger.info('Is secure context:', window.isSecureContext);
+
+      // Initialize MIDI controller for restore attempt
+      if (!this.midiController) {
+        this.midiController = new MidiController(this);
+      }
+
+      // Add a small delay to ensure page is fully ready
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Try to restore MIDI state
+      const restored = await this.midiController.restoreMidiState(
+        window.location.href
+      );
+
+      if (restored) {
+        Logger.info('MIDI state auto-restored successfully');
+        this.notificationManager.showSuccess('MIDI Controller Restored!');
+        this.autoRestoreOnUserGesture = false; // Success, no need for fallback
+      } else {
+        Logger.info('No MIDI state to restore or restore failed');
+        // Check if we should try again on user gesture
+        const hasPermission = await MidiStorageManager.getMidiPermission(
+          window.location.href
+        );
+        if (hasPermission === true) {
+          Logger.info('Will attempt auto-restore on next user gesture');
+          this.autoRestoreOnUserGesture = true;
+          this.autoRestoreAttempted = false; // Allow retry on user gesture
+        }
+      }
+    } catch (error) {
+      Logger.error('Failed to auto-restore MIDI state:', error);
+      // Check if we should try again on user gesture
+      try {
+        const hasPermission = await MidiStorageManager.getMidiPermission(
+          window.location.href
+        );
+        if (hasPermission === true) {
+          Logger.info(
+            'Will attempt auto-restore on next user gesture due to error'
+          );
+          this.autoRestoreOnUserGesture = true;
+          this.autoRestoreAttempted = false; // Allow retry on user gesture
+        }
+      } catch (permissionError) {
+        Logger.error(
+          'Failed to check permission for fallback:',
+          permissionError
+        );
+      }
+    }
   }
 }

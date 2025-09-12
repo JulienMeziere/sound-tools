@@ -1,4 +1,8 @@
 import { Logger } from '../logger';
+import {
+  MidiStorageManager,
+  StoredMidiMapping,
+} from '../storage/MidiStorageManager';
 
 export interface MidiDevice {
   id: string;
@@ -72,7 +76,7 @@ export class MidiController {
     };
   }
 
-  async requestMidiPermission(): Promise<boolean> {
+  async requestMidiPermission(url?: string): Promise<boolean> {
     try {
       Logger.info('Requesting MIDI access permission...');
 
@@ -123,6 +127,11 @@ export class MidiController {
 
       this.hasPermission = true;
 
+      // Save permission to storage if URL provided
+      if (url) {
+        void MidiStorageManager.saveMidiPermission(url, true);
+      }
+
       // Scan for available devices
       this.scanDevices();
 
@@ -133,6 +142,11 @@ export class MidiController {
     } catch (error) {
       this.hasPermission = false;
       Logger.error('MIDI permission denied or failed:', error);
+
+      // Save permission denial to storage if URL provided
+      if (url) {
+        void MidiStorageManager.saveMidiPermission(url, false);
+      }
 
       // Log additional context for debugging
       if (error instanceof Error) {
@@ -166,7 +180,7 @@ export class MidiController {
     this.events.onDevicesScanned(this.availableDevices);
   }
 
-  connectToDevice(deviceId: string): void {
+  async connectToDevice(deviceId: string): Promise<void> {
     try {
       if (!this.midiAccess) {
         throw new Error('MIDI access not available');
@@ -193,7 +207,41 @@ export class MidiController {
       this.connectedDeviceId = deviceId;
       this.connectedDeviceName = device.name ?? 'Unknown Device';
 
+      // Save as last active device and ensure device configuration exists
+      const deviceInfo = {
+        id: deviceId,
+        name: this.connectedDeviceName,
+      };
+
+      void MidiStorageManager.setLastActiveDevice(deviceInfo);
+
+      // Load existing configuration or create new one
+      const existingConfig =
+        await MidiStorageManager.loadDeviceConfiguration(deviceId);
+      Logger.info('Device configuration check:', {
+        deviceId,
+        hasExistingConfig: !!existingConfig,
+        mappingsCount: existingConfig?.mappings.length || 0,
+      });
+
+      if (!existingConfig) {
+        // Create new device configuration with empty mappings
+        void MidiStorageManager.saveDeviceConfiguration(deviceInfo, []);
+        Logger.info('Created new device configuration for:', deviceInfo.name);
+      } else {
+        // Restore existing mappings for this device
+        this.restoreMidiMappings(existingConfig.mappings);
+        Logger.info(
+          `Restored ${existingConfig.mappings.length} mappings for device:`,
+          this.connectedDeviceName
+        );
+      }
+
       Logger.info('MIDI connected successfully to:', this.connectedDeviceName);
+      Logger.info('Connected device details:', {
+        deviceId: this.connectedDeviceId,
+        deviceName: this.connectedDeviceName,
+      });
       this.events.onConnectionChange(
         this.isConnected,
         this.connectedDeviceName
@@ -207,7 +255,7 @@ export class MidiController {
     }
   }
 
-  disconnect(): void {
+  disconnect(clearLastActive = false, clearAllConfigurations = false): void {
     if (this.midiAccess && this.connectedDeviceId) {
       const device = this.midiAccess.inputs.get(this.connectedDeviceId);
       if (device) {
@@ -220,13 +268,39 @@ export class MidiController {
     this.lastActivity = null;
     this.midiMappings.clear();
 
+    // Only clear the last active device if explicitly requested (user disconnect)
+    if (clearLastActive) {
+      void MidiStorageManager.clearLastActiveDevice();
+      Logger.info(
+        'Last active device cleared from storage due to explicit disconnect'
+      );
+      Logger.info('Device configurations preserved for future reconnection');
+    } else {
+      Logger.info('Last active device preserved during cleanup');
+    }
+
+    // Only clear all device configurations if explicitly requested (rare case)
+    if (clearAllConfigurations) {
+      void MidiStorageManager.clearAllDeviceConfigurations();
+      Logger.info(
+        'All device configurations cleared from storage due to explicit request'
+      );
+    }
+
     // Update linked state after clearing mappings
     this.updateLinkedState();
     const previousDeviceName = this.connectedDeviceName;
+    const previousDeviceId = this.connectedDeviceId;
     this.connectedDeviceId = null;
     this.connectedDeviceName = null;
 
     Logger.info('MIDI disconnected from:', previousDeviceName);
+    Logger.info('Disconnected device details:', {
+      deviceId: previousDeviceId,
+      deviceName: previousDeviceName,
+      clearLastActive,
+      clearAllConfigurations,
+    });
     this.events.onConnectionChange(this.isConnected, '');
   }
 
@@ -298,6 +372,16 @@ export class MidiController {
         this.midiMappings.delete(midiKey);
       }
 
+      // Remove mapping from device-specific storage
+      if (this.connectedDeviceId) {
+        void MidiStorageManager.removeMidiMapping(
+          this.connectedDeviceId,
+          midiType,
+          midiChannel,
+          midiValue
+        );
+      }
+
       this.updateLinkedState();
       Logger.info('Specific MIDI mapping removed:', removedMapping);
       return true;
@@ -307,6 +391,26 @@ export class MidiController {
 
   hasRecentActivity(): boolean {
     return this.lastActivity !== null;
+  }
+
+  // Check if a MIDI mapping already exists
+  private mappingExists(
+    targetId: string,
+    midiType: 'note' | 'control',
+    midiChannel: number,
+    midiValue: number
+  ): boolean {
+    const midiKey = this.getMidiKey(midiType, midiChannel, midiValue);
+    const existingMappings = this.midiMappings.get(midiKey) || [];
+
+    return existingMappings.some(
+      (existing) =>
+        existing.id === targetId &&
+        existing.midiType === midiType &&
+        existing.midiChannel === midiChannel &&
+        ((midiType === 'note' && existing.midiNote === midiValue) ||
+          (midiType === 'control' && existing.midiCC === midiValue))
+    );
   }
 
   private updateLinkedState(): void {
@@ -382,6 +486,18 @@ export class MidiController {
       mapping.midiCC = data1;
     }
 
+    // Check if this exact mapping already exists
+    const midiValue = data1;
+    if (this.mappingExists(targetId, mapping.midiType, channel, midiValue)) {
+      Logger.warn('MIDI link already exists for this control and element:', {
+        targetId,
+        midiType: mapping.midiType,
+        midiChannel: mapping.midiChannel,
+        midiValue,
+      });
+      return;
+    }
+
     // Create a unique key for this MIDI input
     const midiKey = this.getMidiKey(mapping.midiType, channel, data1);
 
@@ -389,6 +505,24 @@ export class MidiController {
     const existingMappings = this.midiMappings.get(midiKey) || [];
     existingMappings.push(mapping);
     this.midiMappings.set(midiKey, existingMappings);
+
+    // Save mapping to device-specific storage
+    if (this.connectedDeviceId) {
+      const storedMapping: StoredMidiMapping = {
+        id: mapping.id,
+        type: mapping.type,
+        effect: mapping.effect,
+        midiType: mapping.midiType,
+        midiChannel: mapping.midiChannel,
+        ...(mapping.parameter && { parameter: mapping.parameter }),
+        ...(mapping.midiNote !== undefined && { midiNote: mapping.midiNote }),
+        ...(mapping.midiCC !== undefined && { midiCC: mapping.midiCC }),
+      };
+      void MidiStorageManager.saveMidiMapping(
+        this.connectedDeviceId,
+        storedMapping
+      );
+    }
 
     // Update linked state based on active mappings
     this.updateLinkedState();
@@ -581,5 +715,164 @@ export class MidiController {
     const octave = Math.floor(noteNumber / 12) - 1;
     const note = noteNames[noteNumber % 12];
     return `${note}${octave}`;
+  }
+
+  // Restore MIDI state from storage
+  async restoreMidiState(url: string): Promise<boolean> {
+    try {
+      Logger.info('Attempting to restore MIDI state for:', url);
+
+      // Check if we have permission for this domain
+      const hasPermission = await MidiStorageManager.getMidiPermission(url);
+      Logger.info('Domain permission check result:', hasPermission);
+
+      if (hasPermission !== true) {
+        Logger.info('No MIDI permission stored for domain, skipping restore');
+        return false;
+      }
+
+      // Load saved MIDI state
+      const midiState = await MidiStorageManager.loadMidiState();
+      Logger.info('Loaded MIDI state:', {
+        hasDevice: !!midiState.midiDevice,
+        deviceName: midiState.midiDevice?.name,
+        deviceId: midiState.midiDevice?.id,
+        mappingsCount: midiState.midiMappings.length,
+      });
+
+      // Debug: Log full state for troubleshooting
+      Logger.info('Full MIDI state from storage:', midiState);
+
+      if (!midiState.midiDevice) {
+        Logger.info('No MIDI device saved, skipping restore');
+        return false;
+      }
+
+      // Request MIDI permission first (this should succeed since we have it stored)
+      const permissionGranted = await this.requestMidiPermission(url);
+      if (!permissionGranted) {
+        Logger.warn('Failed to get MIDI permission during restore');
+        return false;
+      }
+
+      // Try to reconnect to the saved device
+      await this.connectToDevice(midiState.midiDevice.id);
+
+      // Check if connection was successful
+      if (!this.isConnected) {
+        Logger.warn(
+          'Failed to reconnect to saved MIDI device:',
+          midiState.midiDevice.name
+        );
+        return false;
+      }
+
+      // Restore MIDI mappings
+      this.restoreMidiMappings(midiState.midiMappings);
+
+      Logger.info('MIDI state restored successfully');
+      return true;
+    } catch (error) {
+      Logger.error('Failed to restore MIDI state:', error);
+      return false;
+    }
+  }
+
+  // Restore MIDI mappings from storage
+  private restoreMidiMappings(storedMappings: StoredMidiMapping[]): void {
+    try {
+      Logger.info('Restoring MIDI mappings:', storedMappings.length);
+
+      for (const storedMapping of storedMappings) {
+        // Convert stored mapping back to internal mapping format
+        const mapping: MidiMapping = {
+          id: storedMapping.id,
+          type: storedMapping.type,
+          effect: storedMapping.effect,
+          midiType: storedMapping.midiType,
+          midiChannel: storedMapping.midiChannel,
+          ...(storedMapping.parameter && {
+            parameter: storedMapping.parameter,
+          }),
+          ...(storedMapping.midiNote !== undefined && {
+            midiNote: storedMapping.midiNote,
+          }),
+          ...(storedMapping.midiCC !== undefined && {
+            midiCC: storedMapping.midiCC,
+          }),
+        };
+
+        // Create the MIDI key and store the mapping
+        const midiValue = mapping.midiNote ?? mapping.midiCC;
+        if (midiValue !== undefined) {
+          // Check if this mapping already exists (prevent duplicates during restore)
+          if (
+            this.mappingExists(
+              mapping.id,
+              mapping.midiType,
+              mapping.midiChannel,
+              midiValue
+            )
+          ) {
+            Logger.warn('Skipping duplicate mapping during restore:', mapping);
+            continue;
+          }
+
+          const midiKey = this.getMidiKey(
+            mapping.midiType,
+            mapping.midiChannel,
+            midiValue
+          );
+
+          // Add to existing mappings or create new array
+          const existingMappings = this.midiMappings.get(midiKey) || [];
+          existingMappings.push(mapping);
+          this.midiMappings.set(midiKey, existingMappings);
+
+          Logger.info('Restored MIDI mapping:', mapping);
+        }
+      }
+
+      // Update linked state after restoring all mappings
+      this.updateLinkedState();
+
+      Logger.info('All MIDI mappings restored successfully');
+    } catch (error) {
+      Logger.error('Failed to restore MIDI mappings:', error);
+    }
+  }
+
+  // Auto-restore after manual permission grant
+  async autoRestoreAfterPermissionGrant(url: string): Promise<void> {
+    try {
+      Logger.info('Auto-restoring after permission grant for:', url);
+
+      // Load saved MIDI state
+      const midiState = await MidiStorageManager.loadMidiState();
+
+      if (!midiState.midiDevice) {
+        Logger.info('No MIDI device saved, skipping auto-restore');
+        return;
+      }
+
+      // Try to reconnect to the saved device
+      await this.connectToDevice(midiState.midiDevice.id);
+
+      // Check if connection was successful
+      if (!this.isConnected) {
+        Logger.warn(
+          'Failed to reconnect to saved MIDI device during auto-restore:',
+          midiState.midiDevice.name
+        );
+        return;
+      }
+
+      // Restore MIDI mappings
+      this.restoreMidiMappings(midiState.midiMappings);
+
+      Logger.info('Auto-restore completed successfully');
+    } catch (error) {
+      Logger.error('Failed to auto-restore after permission grant:', error);
+    }
   }
 }
