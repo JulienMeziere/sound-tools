@@ -1,0 +1,15 @@
+Sound Tools - Professional Audio Effects for Your Browser
+
+Transform your web audio experience with real-time professional effects. Apply distortion, reverb, and precision filtering to any website's audio content - streaming platforms, music services, video sites, and podcasts.
+
+Key Features:
+🔥 Distortion: Add warmth and character with exponential scaling (0-100%)
+🌊 Reverb: 20 acoustic spaces from intimate booths to cathedral halls
+🎚️ Dual Filter: High-pass and low-pass with full frequency range (20Hz-20kHz)
+🎮 MIDI Learn: Click any control, move a MIDI knob - instant mapping with visual chips
+💾 Smart Storage: Settings and MIDI mappings auto-saved per device and domain
+🔄 Auto-Restore: Controllers reconnect automatically when revisiting pages
+
+Perfect for music lovers, content creators, audio enthusiasts, and anyone wanting enhanced web audio control.
+
+Open source project with zero-latency real-time processing. Works universally with all audio/video content.

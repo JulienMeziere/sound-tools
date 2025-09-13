@@ -1,0 +1,19 @@
+CHROME WEB STORE PERMISSION JUSTIFICATIONS
+
+=== 1. activeTab Permission (399/1000 characters) ===
+
+Sound Tools requires activeTab permission to inject audio processing scripts into web pages containing audio/video content. This allows the extension to apply real-time audio effects (distortion, reverb, filters) to media playing on websites like streaming platforms and video sites. The permission is only used when the user actively clicks the extension icon and enables audio effects.
+
+=== 2. storage Permission (373/1000 characters) ===
+
+Sound Tools uses local storage to save user preferences and audio effect parameters (distortion amount, reverb settings, filter frequencies). This ensures that when users adjust their audio settings, these preferences are remembered across browser sessions. No personal data is collected - only audio effect settings are stored locally on the user's device for convenience.
+
+=== 3. Host Access Permission (*://*/*) (480/1000 characters) ===
+
+Sound Tools requires host access to all websites (*://*/*) to inject audio processing capabilities into any web page containing audio or video content. This broad permission is necessary because users may want to apply audio effects to content on any website - from major streaming services to smaller audio sites. The extension only activates when users explicitly enable it and only processes audio, never accessing personal data or other page content.
+
+=== NOTES ===
+- All justifications are under 1000 characters
+- Removed specific platform names to avoid keyword spam
+- Focused on technical necessity and user privacy
+- Emphasized user control and explicit activation

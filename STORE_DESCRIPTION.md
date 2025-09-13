@@ -1,6 +1,6 @@
 # Sound Tools - Professional Audio Effects for Your Browser
 
-Transform your web audio experience with Sound Tools, a powerful Chrome extension that brings professional-grade audio effects to any website. Whether you're listening to music, watching videos, or enjoying podcasts, Sound Tools gives you complete control over your audio with real-time effects processing.
+Transform your web audio experience with Sound Tools, a powerful open source Chrome extension that brings professional-grade audio effects to any website. Whether you're listening to music, watching videos, or enjoying podcasts, Sound Tools gives you complete control over your audio with real-time effects processing and MIDI controller integration.
 
 ## 🎵 **Core Features**
 
@@ -10,12 +10,7 @@ Apply professional audio effects to any audio or video content playing in your b
 
 ### **Universal Compatibility**
 
-Works seamlessly with all major platforms:
-
-- YouTube, Spotify, Netflix, Twitch
-- SoundCloud, Bandcamp, Apple Music
-- Podcasts, audiobooks, and streaming services
-- Any website with audio or video content
+Works seamlessly with all major streaming platforms, music services, video sites, podcasts, audiobooks, and any website with audio or video content. Simply navigate to your favorite site and start enhancing your audio experience.
 
 ## 🎛️ **Professional Audio Effects**
 
@@ -72,55 +67,64 @@ Precision frequency control with our advanced dual-filter system.
 
 **Perfect for:** Frequency shaping, creative filtering, vintage effects, noise reduction
 
-## 🎮 **MIDI Controller Support**
+## 🎮 **Advanced MIDI Controller Integration**
 
-Connect your MIDI controllers for hands-on audio control.
+Connect your MIDI controllers for professional hands-on audio control with our comprehensive MIDI learning system.
 
-**Features:**
+**Core Features:**
 
-- **Real-time MIDI detection**: Automatically discovers connected MIDI devices
-- **Hardware integration**: Use physical knobs, faders, and buttons
-- **Professional workflow**: Tactile control over all audio parameters
-- **Multiple device support**: Connect multiple MIDI controllers simultaneously
+- **Intelligent Device Detection**: Automatically discovers and connects to MIDI controllers
+- **Learn Mode**: Click any control and move a MIDI knob to create instant mappings
+- **Visual MIDI Links**: See which controls are mapped with removable indicator chips
+- **Flexible Mappings**: Support for both MIDI notes and CC messages with one-to-many relationships
+- **Persistent Storage**: All MIDI mappings are automatically saved per device
+- **Per-Domain Permissions**: MIDI access permissions remembered for each website
+- **Auto-Restore**: Controllers and mappings automatically reconnect when revisiting pages
+- **Professional Workflow**: Use physical knobs, faders, and buttons for tactile control
 
 ## 💾 **Smart Parameter Management**
 
-### **Persistent Settings**
+### **Intelligent Parameter Storage**
 
-- **Parameter memory**: All effect settings are automatically saved
-- **Per-effect storage**: Each effect remembers its individual parameters
-- **Session persistence**: Settings maintained across browser sessions
-- **Instant recall**: Effects start with your last-used settings
+- **Automatic Saving**: All effect settings and MIDI mappings are instantly saved
+- **Cross-Context Sync**: Parameters synchronized between popup and audio processing
+- **Per-Effect Memory**: Each effect maintains its individual parameter state
+- **Session Persistence**: Settings preserved across browser sessions and page reloads
+- **Device-Specific Storage**: MIDI mappings saved separately for each connected device
 
-### **Real-Time Control**
+### **Real-Time Control & Feedback**
 
-- **Zero-latency updates**: Parameter changes apply instantly
-- **Smooth transitions**: No audio glitches or pops when adjusting settings
-- **Live adjustment**: Modify effects while audio is playing
-- **Visual feedback**: Real-time parameter display in the interface
+- **Zero-Latency Updates**: Parameter changes apply instantly without audio interruption
+- **Smooth Transitions**: Professional-grade audio processing without glitches or pops
+- **Live Adjustment**: Modify effects while audio is playing for immediate results
+- **Visual Feedback**: Real-time parameter display and MIDI activity indicators
+- **Responsive UI**: Interface updates instantly reflect MIDI controller movements
 
 ## 🎯 **User Interface**
 
-### **Intuitive Design**
+### **Modern Interface Design**
 
-- **Clean, modern interface**: Easy-to-use popup design
-- **Visual effect status**: Clear indication of active effects
+- **Clean, intuitive popup**: Professional design with easy-to-use controls
+- **Visual effect status**: Clear indication of active effects with color-coded buttons
 - **Expandable controls**: Click settings wheel to reveal parameter sliders
-- **Responsive design**: Works perfectly at any screen size
+- **MIDI Link Indicators**: Visual chips show which controls are mapped to MIDI
+- **Responsive design**: Optimized for all screen sizes and usage scenarios
 
-### **Advanced Sliders**
+### **Professional Control Elements**
 
-- **Precision control**: Smooth drag-and-drop operation
-- **Visual feedback**: Real-time value display and visual indicators
-- **Full range access**: Reach exact 0% and 100% values
-- **Optimized performance**: Fully memoized components for smooth operation
+- **Precision sliders**: Smooth drag-and-drop operation with exact value control
+- **Real-time feedback**: Live parameter display and visual progress indicators
+- **MIDI learning mode**: Visual feedback during MIDI mapping creation
+- **Removable mappings**: Click chip crosses to remove unwanted MIDI links
+- **Optimized performance**: Fully memoized React components for smooth operation
 
-### **Effect Management**
+### **Smart Effect Management**
 
-- **One-click enable/disable**: Toggle effects instantly
-- **Independent control**: Each effect operates independently
-- **Processing order**: Optimized signal chain (Distortion → Reverb → Filter)
-- **Visual state management**: Clear indication of active effects and open settings
+- **One-click toggle**: Enable/disable effects instantly with visual confirmation
+- **Independent operation**: Each effect operates independently with isolated controls
+- **Optimized signal chain**: Professional processing order (Distortion → Reverb → Filter)
+- **State persistence**: Visual indicators reflect saved settings and active mappings
+- **Learn mode integration**: Visual cues guide users through MIDI mapping process
 
 ## 🔧 **Technical Excellence**
 
@@ -134,9 +138,11 @@ Connect your MIDI controllers for hands-on audio control.
 ### **Advanced Architecture**
 
 - **Modular design**: Each effect is independently developed and optimized
-- **Real-time parameter updates**: Instant response to control changes
-- **Compound effect support**: Complex multi-node effect architectures
-- **Future-ready**: Easily extensible for additional effects
+- **Cross-context messaging**: Seamless communication between popup and content script
+- **Parameter store system**: Centralized parameter management with automatic synchronization
+- **Storage management**: Sophisticated Chrome storage integration for persistence
+- **Real-time updates**: Instant response to both UI and MIDI control changes
+- **Future-ready**: Extensible architecture for additional effects and features
 
 ### **Quality Assurance**
 
@@ -177,6 +183,20 @@ Connect your MIDI controllers for hands-on audio control.
 5. **Adjust parameters** using the settings wheel and sliders
 6. **Connect MIDI controllers** for hands-on control (optional)
 
+## 🌟 **Open Source & Community**
+
+Sound Tools is proudly **open source** under the Apache 2.0 license. The complete source code, documentation, and development roadmap are available on GitHub:
+
+**🔗 Repository:** https://github.com/JulienMeziere/sound-tools
+
+**Community Benefits:**
+
+- **Transparency**: Full source code visibility for security and trust
+- **Contributions Welcome**: Help improve features, fix bugs, or add new effects
+- **Issue Tracking**: Report bugs or request features through GitHub Issues
+- **Active Development**: Regular updates and community-driven improvements
+- **Learning Resource**: Study professional audio processing and Chrome extension development
+
 ## 🎵 **Perfect For**
 
 - **Music lovers** who want to enhance their listening experience
@@ -189,4 +209,4 @@ Connect your MIDI controllers for hands-on audio control.
 
 **Sound Tools brings professional audio processing to your browser. Experience your favorite content like never before with real-time effects, MIDI control, and precision audio shaping.**
 
-_Compatible with all Chromium-based browsers. No account required. Privacy-focused with no data collection._
+_Open source project available on GitHub. Compatible with all Chromium-based browsers. No account required. Privacy-focused with no data collection._
