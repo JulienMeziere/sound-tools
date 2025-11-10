@@ -179,7 +179,7 @@ The extension uses the Web Audio API to create real-time audio effects:
 - ✅ **Chrome**: Full support (Manifest V3)
 - 🔄 **Firefox**: Planned support (will require Manifest V2 adaptation)
 - ❓ **Safari**: Under consideration
-- ❓ **Edge**: Should work (Chromium-based)
+- ✅ **Edge**: Full support (Chromium-based)
 
 ## Technologies Used
 
