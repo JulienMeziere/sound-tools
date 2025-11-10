@@ -5,6 +5,8 @@
 
 A powerful **open source** Chrome extension built with React that provides real-time audio effects for web audio/video and connects to MIDI controllers for hands-on control.
 
+Download it [here](https://chromewebstore.google.com/detail/sound-tools/ebobkhcfenmbocmopjngeapipeldbala) from the Chrome Web Store.
+
 ## Features
 
 - 🎛️ **Real-time Audio Effects**: Apply reverb, distortion, and filters to any audio/video on web pages
