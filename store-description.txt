@@ -1,0 +1,69 @@
+Sound Tools – Real-time audio effects and MIDI control for your browser
+
+Sound Tools adds studio-style audio effects to any audio or video playing in your browser: music, videos, podcasts, live streams… Move a slider and hear the result instantly, or plug in a MIDI controller and play with the sound using real knobs, faders and pads.
+
+Free and open source. No account, no tracking, no data collection.
+
+
+🎛️ THREE EFFECTS
+
+🔥 Distortion
+Adds warmth, grit and harmonics, from subtle saturation to heavy crunch.
+• Amount: 0–100, with a progressive curve for fine control at low settings
+
+🌊 Reverb
+Convolution reverb that places the sound in a real-sounding space.
+• Room Size: 20 rooms, from a small booth to a cathedral
+• Mix: blend between the original (dry) and the reverberated (wet) sound
+
+🎚️ Filter
+A high-pass and a low-pass filter in series to shape the frequency range.
+• High-Pass and Low-Pass Frequency: 20 Hz – 20 kHz (logarithmic)
+• Resonance (Q) for each filter, from gentle slopes to resonant peaks
+Great for telephone and radio effects, removing rumble, taming harsh highs, or DJ-style filter sweeps.
+
+Signal chain: Distortion → Reverb → Filter. Each effect can be switched on and off independently, and every setting changes the sound in real time while it plays.
+
+
+🎹 MIDI CONTROLLER SUPPORT
+
+• Connect any USB/MIDI keyboard, pad controller or control surface
+• Learn mode: click Learn, move a knob, fader or pad, then click the slider or effect switch to control – done
+• One control can drive several parameters, and one parameter can be driven by several controls
+• Knobs and faders control sliders; pads and keys switch effects on and off
+• Linked controls are shown as small chips you can remove with one click
+• Mappings are saved per device and come back automatically, even after unplugging and replugging the controller
+• MIDI access is granted by the browser per website, and restored silently when you come back to a site
+
+(MIDI is currently available in Chrome and other Chromium browsers. Firefox doesn't let extensions use Web MIDI yet.)
+
+
+✨ DESIGNED TO STAY OUT OF THE WAY
+
+• Clean popup with dark and light themes that follow your system
+• Effect cards with on/off switches and expandable sliders
+• Settings are saved automatically and shared between your tabs
+• Effects start switched off on each page: nothing touches a page's audio until you turn an effect on
+• Works with pages that load videos dynamically (YouTube, inline previews, ads…)
+• Clear guidance when a page has no audio yet, or when a tab needs to be reloaded
+
+
+🚀 GETTING STARTED
+
+1. Open a page that plays audio or video
+2. Click the Sound Tools icon in the toolbar
+3. Flip an effect's switch, then click its card to open the sliders
+4. Optional: click "Enable" on the MIDI card to connect a controller
+
+
+🔒 PRIVACY
+
+Sound Tools processes audio locally in your browser with the Web Audio API. It doesn't collect, send or sell any data, and it doesn't load any remote code. Your effect settings and MIDI mappings are stored locally on your device.
+
+
+🌟 OPEN SOURCE
+
+Source code, issue tracker and roadmap (Apache 2.0 license):
+https://github.com/JulienMeziere/sound-tools
+
+Bug reports, ideas and contributions are welcome!
