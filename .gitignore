@@ -78,3 +78,6 @@ web-ext-artifacts/
 *.temp
 
 sound-tools-extension.zip
+sound-tools-firefox.zip
+sound-tools-source.zip
+dist-firefox/

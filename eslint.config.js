@@ -11,6 +11,7 @@ export default [
     ignores: [
       'node_modules/**',
       'dist/**',
+      'dist-firefox/**',
       'build/**',
       '.env*',
       '*.config.js',
@@ -32,31 +33,6 @@ export default [
           jsx: true,
         },
       },
-      globals: {
-        // Browser globals
-        window: 'readonly',
-        document: 'readonly',
-        console: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        navigator: 'readonly',
-
-        // Chrome Extension APIs
-        chrome: 'readonly',
-
-        // Web Audio API
-        AudioContext: 'readonly',
-        MediaElementAudioSourceNode: 'readonly',
-
-        // Web MIDI API
-        MIDIAccess: 'readonly',
-        MIDIInput: 'readonly',
-        MIDIMessageEvent: 'readonly',
-
-        // Node.js globals
-        Buffer: 'readonly',
-        process: 'readonly',
-      },
     },
     plugins: {
       '@typescript-eslint': typescript,
@@ -66,7 +42,8 @@ export default [
     },
     settings: {
       react: {
-        version: 'detect',
+        // Explicit version: 'detect' relies on context.getFilename(), which ESLint 10 removed.
+        version: '19.3',
       },
     },
     rules: {
@@ -87,6 +64,7 @@ export default [
         },
       ],
       'no-unused-vars': 'off', // Disable base rule as @typescript-eslint/no-unused-vars covers this
+      'no-undef': 'off', // TypeScript already checks for undefined globals (DOM, Web Audio, Web MIDI...)
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',

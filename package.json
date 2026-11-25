@@ -1,23 +1,31 @@
 {
   "name": "sound-tools",
-  "version": "1.0.0",
-  "description": "A browser add providing audio FXs to the browser and that can connect to MIDI controllers",
+  "version": "1.1.0",
+  "description": "Real-time audio effects (distortion, reverb, filter) for any website, controllable with a MIDI controller.",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "npm run lint:check && npm run format:check && tsc && vite build --mode production",
-    "build:dev": "npm run lint:check && npm run format:check && tsc && vite build --mode development",
+    "build": "npm run check-all && vite build --mode production",
+    "build:dev": "npm run check-all && vite build --mode development",
+    "build:firefox": "npm run check-all && vite build --mode firefox",
+    "build:firefox:dev": "npm run check-all && vite build --mode firefox-development",
+    "build:all": "npm run build && vite build --mode firefox",
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx --fix",
-    "lint:check": "eslint . --ext .ts,.tsx",
+    "lint": "eslint . --fix",
+    "lint:check": "eslint .",
+    "lint:firefox": "web-ext lint --source-dir dist-firefox",
+    "start:firefox": "web-ext run --source-dir dist-firefox",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check-all": "npm run type-check && npm run lint:check && npm run format:check",
     "prepare": "husky",
-    "prepare-publish": "npm run check-all && npm run build && npm run package",
-    "package": "cd dist && zip -r ../sound-tools-extension.zip * && cd .. && echo 'Extension packaged as sound-tools-extension.zip'"
+    "package": "cd dist && zip -r ../sound-tools-extension.zip * && cd .. && echo 'Extension packaged as sound-tools-extension.zip'",
+    "package:firefox": "web-ext build --source-dir dist-firefox --artifacts-dir . --filename sound-tools-firefox.zip --overwrite-dest",
+    "package:source": "sh scripts/package-source.sh",
+    "prepare-publish": "npm run build && npm run package",
+    "prepare-publish:firefox": "npm run build:firefox && npm run lint:firefox && npm run package:firefox && npm run package:source"
   },
   "repository": {
     "type": "git",
@@ -31,28 +39,29 @@
   },
   "homepage": "https://github.com/JulienMeziere/sound-tools#readme",
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.2.0",
-    "@eslint/js": "^9.35.0",
-    "@types/chrome": "^0.1.9",
-    "@types/react": "^19.1.12",
-    "@types/react-dom": "^19.1.9",
-    "@typescript-eslint/eslint-plugin": "^8.43.0",
-    "@typescript-eslint/parser": "^8.43.0",
-    "@vitejs/plugin-react": "^5.0.2",
-    "eslint": "^9.35.0",
+    "@crxjs/vite-plugin": "^3.0.0",
+    "@eslint/js": "^10.0.1",
+    "@types/chrome": "0.3.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typescript-eslint/eslint-plugin": "8.73.0",
+    "@typescript-eslint/parser": "8.73.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-prettier": "^5.5.7",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.7",
-    "lint-staged": "^16.1.6",
-    "prettier": "^3.6.2",
-    "typescript": "^5.9.2",
-    "vite": "^7.1.5"
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.8",
+    "web-ext": "^10.8.0"
   },
   "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -66,5 +75,13 @@
     "*.{json,css,html}": [
       "prettier --write"
     ]
+  },
+  "overrides": {
+    "eslint-plugin-react": {
+      "eslint": "^10.15.0"
+    }
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   }
 }
