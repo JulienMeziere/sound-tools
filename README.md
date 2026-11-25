@@ -7,6 +7,8 @@ A powerful **open source** Chrome and Firefox extension built with React that pr
 
 Download it [here](https://chromewebstore.google.com/detail/sound-tools/ebobkhcfenmbocmopjngeapipeldbala) from the Chrome Web Store (Firefox version coming to addons.mozilla.org).
 
+See [CHANGELOG.md](CHANGELOG.md) for what's new in each version.
+
 ## Features
 
 - 🎛️ **Real-time Audio Effects**: Apply reverb, distortion, and filters to any audio/video on web pages
