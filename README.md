@@ -7,6 +7,8 @@ A powerful **open source** Chrome and Firefox extension built with React that pr
 
 Download it [here](https://chromewebstore.google.com/detail/sound-tools/ebobkhcfenmbocmopjngeapipeldbala) from the Chrome Web Store (Firefox version coming to addons.mozilla.org).
 
+See [CHANGELOG.md](CHANGELOG.md) for what's new in each version.
+
 ## Features
 
 - 🎛️ **Real-time Audio Effects**: Apply reverb, distortion, and filters to any audio/video on web pages
@@ -205,10 +207,7 @@ Pads and keys linked to an effect toggle it on each press. Knobs and faders turn
 
 - ✅ **Chrome**: Full support (Manifest V3)
 - ✅ **Edge**: Full support (Chromium-based)
-- ✅ **Firefox 140+**: Audio effects fully supported (Manifest V3). MIDI is limited:
-  Firefox only grants Web MIDI to a site through a "site permission add-on",
-  which an extension's content script can't trigger. "Enable" (MIDI)
-  then shows "MIDI is not available on this site in this browser".
+- ✅ **Firefox 140+**: Full support (Manifest V3), including MIDI controllers
 - ❓ **Safari**: Under consideration
 
 ## Technologies Used
@@ -252,7 +251,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [x] ✅ **Per-domain MIDI permissions** - MIDI access remembered per website
 - [x] ✅ **Auto-restore MIDI state** - Controllers and mappings automatically reconnect
 - [x] ✅ **Firefox support** - Manifest V3 build from the same sources
-- [ ] Full MIDI support in Firefox (needs a MIDI bridge outside the content script)
+- [x] ✅ **MIDI in Firefox** - Same MIDI features as in Chrome
 - [ ] More audio effects (delay, chorus, phaser, flanger, pitch shift)
 - [ ] Visual audio analyzer with real-time frequency display
 - [ ] Preset management system for saving/loading effect configurations

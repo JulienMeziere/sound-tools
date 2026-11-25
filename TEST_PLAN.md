@@ -140,7 +140,7 @@ Setup: `npm ci && npm run prepare-publish:firefox`, then in Firefox 140+ open
 | 10.1 | → Run sections 1–4 on YouTube and another media site                       | ✅ Same results as in Chrome                                                         |
 | 10.2 | → Open the popup on `about:addons` and on addons.mozilla.org               | ✅ Notice "Sound Tools isn’t running on this page…"                                  |
 | 10.3 | → `about:addons` → Sound Tools → Permissions: turn off "Access your data…" | ✅ Popup shows the "isn’t running" notice on every site; turning it back on fixes it |
-| 10.4 | → Popup → MIDI card → **Enable** with a controller plugged in              | ✅ Toast "MIDI is not available on this site in this browser" (known limitation)     |
+| 10.4 | → Run section 7 (MIDI) with a controller plugged in                        | ✅ Same results as in Chrome (Firefox shows its own permission prompt)               |
 | 10.5 | → Open a private window (allow the add-on in private windows first)        | ✅ Effects work                                                                      |
 | 10.6 | → Browser Console (Ctrl+Shift+J) during the whole session                  | ✅ No errors from "🎵 Sound Tools" or from `moz-extension://`                        |
 | 10.7 | → Upload `sound-tools-firefox.zip` + `sound-tools-source.zip` to AMO       | ✅ Validation shows 0 errors (2 known React DOM `innerHTML` warnings)                |

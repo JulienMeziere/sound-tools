@@ -35,7 +35,7 @@ Signal chain: Distortion → Reverb → Filter. Each effect can be switched on a
 • Mappings are saved per device and come back automatically, even after unplugging and replugging the controller
 • MIDI access is granted by the browser per website, and restored silently when you come back to a site
 
-(MIDI is currently available in Chrome and other Chromium browsers. Firefox doesn't let extensions use Web MIDI yet.)
+Works in Chrome, Edge and other Chromium browsers, and in Firefox.
 
 
 ✨ DESIGNED TO STAY OUT OF THE WAY
